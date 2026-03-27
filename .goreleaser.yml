@@ -1,0 +1,56 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test -p 2 ./...
+
+builds:
+  - id: devdash
+    main: ./cmd/devdash
+    binary: devdash
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/jasonmassey/devdash-cli-go/internal/commands.Version={{.Version}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "devdash_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+release:
+  github:
+    owner: jasonmassey
+    name: devdash-cli-go
+  draft: false
+  prerelease: auto
+
+# Also produce raw binaries for direct download (install.sh)
+# The archives above produce .tar.gz, but we also want naked binaries
+# for curl | sh install patterns
+nfpms: []
+
+# Produce extra files for the npm wrapper packages
+extra_files: []

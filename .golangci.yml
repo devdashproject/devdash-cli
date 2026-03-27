@@ -1,0 +1,22 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+  disable:
+    - typecheck
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - encoding/json.Unmarshal
+      - (*encoding/json.Encoder).Encode
+      - fmt.Fprintf
+      - fmt.Fprintln
+      - os.Chmod
+
+issues:
+  exclude-dirs:
+    - vendor

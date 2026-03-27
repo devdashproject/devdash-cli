@@ -1,0 +1,36 @@
+{
+  "name": "@devdashproject/devdash-cli",
+  "version": "0.3.0",
+  "description": "AI-powered task tracking CLI for developers and coding agents",
+  "bin": {
+    "devdash": "bin/devdash"
+  },
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "optionalDependencies": {
+    "@devdashproject/devdash-darwin-arm64": "0.3.0",
+    "@devdashproject/devdash-darwin-x64": "0.3.0",
+    "@devdashproject/devdash-linux-x64": "0.3.0",
+    "@devdashproject/devdash-linux-arm64": "0.3.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jasonmassey/devdash-cli-go"
+  },
+  "license": "MIT",
+  "keywords": [
+    "devdash",
+    "task-tracking",
+    "cli",
+    "ai-agents",
+    "developer-tools"
+  ]
+}

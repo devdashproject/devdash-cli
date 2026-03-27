@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+const { execFileSync } = require("child_process");
+const path = require("path");
+const os = require("os");
+
+const PLATFORM_PACKAGES = {
+  "darwin-arm64": "@devdashproject/devdash-darwin-arm64",
+  "darwin-x64": "@devdashproject/devdash-darwin-x64",
+  "linux-x64": "@devdashproject/devdash-linux-x64",
+  "linux-arm64": "@devdashproject/devdash-linux-arm64",
+};
+
+function getBinaryPath() {
+  const platform = os.platform();
+  const arch = os.arch();
+  const key = `${platform}-${arch}`;
+  const pkg = PLATFORM_PACKAGES[key];
+
+  if (!pkg) {
+    console.error(
+      `Unsupported platform: ${platform}-${arch}. Supported: ${Object.keys(PLATFORM_PACKAGES).join(", ")}`
+    );
+    process.exit(1);
+  }
+
+  try {
+    return require.resolve(`${pkg}/bin/devdash`);
+  } catch {
+    console.error(
+      `Platform package ${pkg} not installed. Try: npm install -g @devdashproject/devdash-cli`
+    );
+    process.exit(1);
+  }
+}
+
+const binary = getBinaryPath();
+const args = process.argv.slice(2);
+
+try {
+  execFileSync(binary, args, { stdio: "inherit" });
+} catch (err) {
+  process.exit(err.status || 1);
+}
