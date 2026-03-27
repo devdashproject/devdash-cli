@@ -25,5 +25,12 @@ linters-settings:
       - os.WriteFile
 
 issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    - path: testutil\.go
+      linters:
+        - errcheck
   exclude-dirs:
     - vendor
