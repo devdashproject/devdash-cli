@@ -59,6 +59,9 @@ func init() {
 
 	// Register subcommands
 	rootCmd.AddCommand(versionCmd)
+
+	// Override default help to support topic subcommands
+	RegisterHelpTopics()
 }
 
 // requireAuth ensures we have a valid token and API client.
@@ -87,6 +90,11 @@ func requireProject() (string, error) {
 	}
 
 	return cfg.RequireProjectID()
+}
+
+// apiClientFromConfig creates a new API client from a config (used by doctor).
+func apiClientFromConfig(c *config.Config) *api.Client {
+	return api.New(c.APIURL, c.Token)
 }
 
 // Version command
