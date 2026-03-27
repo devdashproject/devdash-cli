@@ -1,6 +1,44 @@
 package api
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+// FlexTime handles multiple date formats from the API.
+type FlexTime struct {
+	time.Time
+}
+
+func (ft *FlexTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		return nil
+	}
+
+	// Try RFC3339 first, then space-separated format
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02 15:04:05Z",
+		"2006-01-02 15:04:05.000Z",
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			ft.Time = t
+			return nil
+		}
+	}
+
+	// Last resort: replace space with T and try again
+	normalized := strings.Replace(s, " ", "T", 1)
+	t, err := time.Parse(time.RFC3339, normalized)
+	if err != nil {
+		return err
+	}
+	ft.Time = t
+	return nil
+}
 
 // Bead represents a devdash issue/task.
 type Bead struct {
@@ -28,8 +66,8 @@ type Bead struct {
 	StaleSince       string `json:"staleSince,omitempty"`
 	StaleMinutes     int    `json:"staleMinutes,omitempty"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt FlexTime `json:"createdAt"`
+	UpdatedAt FlexTime `json:"updatedAt"`
 }
 
 // CompletionResult holds metadata from closing an issue.
