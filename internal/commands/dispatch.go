@@ -9,72 +9,61 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	dispatchCmd.Flags().Int("priority", 2, "Job priority: 0-4")
-	dispatchCmd.Flags().String("worker", "", "Execution backend: docker, e2b, railway")
-	rootCmd.AddCommand(dispatchCmd)
-}
+func newDispatchCmd(d *Deps) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "dispatch <id>",
+		Short: "Dispatch a bead for execution",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pid, err := d.requireProject(cmd)
+			if err != nil {
+				return err
+			}
 
-var dispatchCmd = &cobra.Command{
-	Use:   "dispatch <id>",
-	Short: "Dispatch a bead for execution",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pid, err := requireProject()
-		if err != nil {
-			return err
-		}
+			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
+			if err != nil {
+				return err
+			}
 
-		uuid, err := resolve.IDWithFetch(args[0], client, pid)
-		if err != nil {
-			return err
-		}
+			beadData, _ := d.Client.Get("/beads/" + uuid + "?projectId=" + pid)
+			var bead api.Bead
+			json.Unmarshal(beadData, &bead)
 
-		// Fetch bead for prompt
-		beadData, err := client.Get("/beads/" + uuid + "?projectId=" + pid)
-		if err != nil {
-			return err
-		}
-		var bead api.Bead
-		json.Unmarshal(beadData, &bead)
+			prompt := bead.PreInstructions
+			if prompt == "" {
+				prompt = bead.Description
+			}
+			if prompt == "" {
+				prompt = bead.Subject
+			}
 
-		// Build prompt: preInstructions > description > subject
-		prompt := bead.PreInstructions
-		if prompt == "" {
-			prompt = bead.Description
-		}
-		if prompt == "" {
-			prompt = bead.Subject
-		}
+			body := map[string]interface{}{"beadId": uuid, "projectId": pid, "prompt": prompt}
+			if cmd.Flags().Changed("priority") {
+				p, _ := cmd.Flags().GetInt("priority")
+				body["priority"] = p
+			}
+			if worker, _ := cmd.Flags().GetString("worker"); worker != "" {
+				body["workerType"] = worker
+			}
 
-		body := map[string]interface{}{
-			"beadId":    uuid,
-			"projectId": pid,
-			"prompt":    prompt,
-		}
+			data, err := d.Client.Post("/jobs", body)
+			if err != nil {
+				return err
+			}
 
-		if cmd.Flags().Changed("priority") {
-			p, _ := cmd.Flags().GetInt("priority")
-			body["priority"] = p
-		}
-		if worker, _ := cmd.Flags().GetString("worker"); worker != "" {
-			body["workerType"] = worker
-		}
+			var job api.Job
+			json.Unmarshal(data, &job)
 
-		data, err := client.Post("/jobs", body)
-		if err != nil {
-			return err
-		}
-
-		var job api.Job
-		json.Unmarshal(data, &job)
-
-		fmt.Printf("Job queued: %s\n", job.ID)
-		fmt.Printf("  Bead:   %s — %s\n", shortID(uuid), bead.Subject)
-		fmt.Printf("  Status: %s\n", job.Status)
-		if job.WorkerType != "" {
-			fmt.Printf("  Worker: %s\n", job.WorkerType)
-		}
-		return nil
-	},
+			fmt.Printf("Job queued: %s\n", job.ID)
+			fmt.Printf("  Bead:   %s — %s\n", shortID(uuid), bead.Subject)
+			fmt.Printf("  Status: %s\n", job.Status)
+			if job.WorkerType != "" {
+				fmt.Printf("  Worker: %s\n", job.WorkerType)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().Int("priority", 2, "Job priority: 0-4")
+	cmd.Flags().String("worker", "", "Execution backend: docker, e2b, railway")
+	return cmd
 }

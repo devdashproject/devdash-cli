@@ -11,116 +11,91 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(analyzeCmd)
+type analyzeResult struct {
+	EstimatedComplexity string          `json:"estimatedComplexity"`
+	AffectedFiles       json.RawMessage `json:"affectedFiles"`
+	AffectedModules     json.RawMessage `json:"affectedModules"`
+	ShouldSubdivide     bool            `json:"shouldSubdivide"`
+	Reasoning           string          `json:"reasoning"`
+	AgentInstructions   string          `json:"agentInstructions"`
+	Subtasks            []struct {
+		ID      string `json:"id"`
+		Subject string `json:"subject"`
+	} `json:"subtasks"`
 }
 
-// AnalyzeResult holds the analysis output from a completed job.
-type AnalyzeResult struct {
-	EstimatedComplexity string           `json:"estimatedComplexity"`
-	AffectedFiles       json.RawMessage  `json:"affectedFiles"`
-	AffectedModules     json.RawMessage  `json:"affectedModules"`
-	ShouldSubdivide     bool             `json:"shouldSubdivide"`
-	Reasoning           string           `json:"reasoning"`
-	AgentInstructions   string           `json:"agentInstructions"`
-	Subtasks            []AnalyzeSubtask `json:"subtasks"`
-}
+func newAnalyzeCmd(d *Deps) *cobra.Command {
+	return &cobra.Command{
+		Use:   "analyze <id>",
+		Short: "Trigger sandbox analysis for an issue",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pid, err := d.requireProject(cmd)
+			if err != nil {
+				return err
+			}
 
-// AnalyzeSubtask is a subtask created by analysis.
-type AnalyzeSubtask struct {
-	ID      string `json:"id"`
-	Subject string `json:"subject"`
-}
+			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
+			if err != nil {
+				return err
+			}
 
-var analyzeCmd = &cobra.Command{
-	Use:   "analyze <id>",
-	Short: "Trigger sandbox analysis for an issue",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pid, err := requireProject()
-		if err != nil {
-			return err
-		}
+			beadData, _ := d.Client.Get("/beads/" + uuid + "?projectId=" + pid)
+			var bead api.Bead
+			json.Unmarshal(beadData, &bead)
+			fmt.Printf("Analyzing: %s\n\n", bead.Subject)
 
-		uuid, err := resolve.IDWithFetch(args[0], client, pid)
-		if err != nil {
-			return err
-		}
+			data, err := d.Client.Post("/jobs/analyze", map[string]string{"beadId": uuid, "projectId": pid})
+			if err != nil {
+				return fmt.Errorf("failed to start analysis: %w", err)
+			}
 
-		// Fetch bead for subject
-		beadData, err := client.Get("/beads/" + uuid + "?projectId=" + pid)
-		if err != nil {
-			return err
-		}
-		var bead api.Bead
-		json.Unmarshal(beadData, &bead)
+			var job api.Job
+			json.Unmarshal(data, &job)
 
-		fmt.Printf("Analyzing: %s\n\n", bead.Subject)
+			timeout := time.After(300 * time.Second)
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
 
-		// Trigger analysis
-		data, err := client.Post("/jobs/analyze", map[string]string{
-			"beadId":    uuid,
-			"projectId": pid,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to start analysis: %w", err)
-		}
-
-		var job api.Job
-		if err := json.Unmarshal(data, &job); err != nil {
-			return err
-		}
-
-		// Poll for completion (5s interval, 300s timeout)
-		timeout := time.After(300 * time.Second)
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-timeout:
-				return fmt.Errorf("analysis timed out after 5 minutes")
-			case <-ticker.C:
-				statusData, err := client.Get("/jobs/" + job.ID)
-				if err != nil {
-					continue
-				}
-				var current api.Job
-				if err := json.Unmarshal(statusData, &current); err != nil {
-					continue
-				}
-
-				switch current.Status {
-				case "completed":
-					return printAnalyzeResult(current, pid)
-				case "failed":
-					errMsg := current.Error
-					if current.FailureAnalysis != nil {
-						errMsg = current.FailureAnalysis.Summary
+			for {
+				select {
+				case <-timeout:
+					return fmt.Errorf("analysis timed out after 5 minutes")
+				case <-ticker.C:
+					statusData, err := d.Client.Get("/jobs/" + job.ID)
+					if err != nil {
+						continue
 					}
-					return fmt.Errorf("analysis failed: %s", errMsg)
-				default:
-					fmt.Fprintf(os.Stderr, "Status: %s...\n", current.Status)
+					var current api.Job
+					json.Unmarshal(statusData, &current)
+
+					switch current.Status {
+					case "completed":
+						return printAnalysis(current, d.Client, pid)
+					case "failed":
+						msg := current.Error
+						if current.FailureAnalysis != nil {
+							msg = current.FailureAnalysis.Summary
+						}
+						return fmt.Errorf("analysis failed: %s", msg)
+					default:
+						fmt.Fprintf(os.Stderr, "Status: %s...\n", current.Status)
+					}
 				}
 			}
-		}
-	},
+		},
+	}
 }
 
-func printAnalyzeResult(job api.Job, pid string) error {
+func printAnalysis(job api.Job, client *api.Client, pid string) error {
 	if job.Result == nil {
 		fmt.Println("Analysis complete (no result data)")
 		return nil
 	}
 
-	resultBytes, err := json.Marshal(job.Result)
-	if err != nil {
-		return err
-	}
-
-	var result AnalyzeResult
+	resultBytes, _ := json.Marshal(job.Result)
+	var result analyzeResult
 	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		// Fallback: print raw result
 		out, _ := json.MarshalIndent(job.Result, "", "  ")
 		fmt.Println(string(out))
 		return nil
@@ -142,19 +117,6 @@ func printAnalyzeResult(job api.Job, pid string) error {
 		fmt.Printf("\n## Decomposed into %d subtasks:\n", len(result.Subtasks))
 		for _, st := range result.Subtasks {
 			fmt.Printf("  - %s %s\n", shortID(st.ID), st.Subject)
-		}
-	}
-
-	// Check for new children
-	childData, err := client.Get("/beads?projectId=" + pid + "&parentId=" + job.BeadID)
-	if err == nil {
-		var children []api.Bead
-		json.Unmarshal(childData, &children)
-		if len(children) > 0 && len(result.Subtasks) == 0 {
-			fmt.Printf("\n## Decomposed into %d subtasks:\n", len(children))
-			for _, c := range children {
-				fmt.Printf("  - %s %s\n", shortID(c.ID), c.Subject)
-			}
 		}
 	}
 

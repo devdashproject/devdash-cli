@@ -10,145 +10,135 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+func newJobsCmd(d *Deps) *cobra.Command {
+	jobsCmd := &cobra.Command{
+		Use:   "jobs",
+		Short: "List recent jobs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pid, err := d.requireProject(cmd)
+			if err != nil {
+				return err
+			}
+
+			path := "/jobs?projectId=" + pid
+			if beadID, _ := cmd.Flags().GetString("bead"); beadID != "" {
+				path += "&beadId=" + beadID
+			}
+
+			data, err := d.Client.Get(path)
+			if err != nil {
+				return err
+			}
+
+			jobs, err := api.JSON[[]api.Job](data, nil)
+			if err != nil {
+				return err
+			}
+
+			for _, j := range jobs {
+				fmt.Println(output.FormatJobLine(j))
+			}
+			return nil
+		},
+	}
 	jobsCmd.Flags().String("bead", "", "Filter by bead ID")
-	jobsCmd.AddCommand(jobsShowCmd)
-	jobsCmd.AddCommand(jobsLogCmd)
-	jobsCmd.AddCommand(jobsFailuresCmd)
-	rootCmd.AddCommand(jobsCmd)
-}
 
-var jobsCmd = &cobra.Command{
-	Use:   "jobs",
-	Short: "List recent jobs",
-	RunE:  runJobsList,
-}
-
-func runJobsList(cmd *cobra.Command, args []string) error {
-	pid, err := requireProject()
-	if err != nil {
-		return err
-	}
-
-	path := "/jobs?projectId=" + pid
-
-	if beadID, _ := cmd.Flags().GetString("bead"); beadID != "" {
-		path += "&beadId=" + beadID
-	}
-
-	data, err := client.Get(path)
-	if err != nil {
-		return err
-	}
-
-	jobs, err := api.JSON[[]api.Job](data, nil)
-	if err != nil {
-		return err
-	}
-
-	for _, j := range jobs {
-		fmt.Println(output.FormatJobLine(j))
-	}
-	return nil
-}
-
-var jobsShowCmd = &cobra.Command{
-	Use:   "show <id>",
-	Short: "Job details",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAuth(); err != nil {
-			return err
-		}
-
-		data, err := client.Get("/jobs/" + args[0])
-		if err != nil {
-			return err
-		}
-
-		var raw json.RawMessage
-		json.Unmarshal(data, &raw)
-		out, _ := json.MarshalIndent(raw, "", "  ")
-		fmt.Println(string(out))
-		return nil
-	},
-}
-
-var jobsLogCmd = &cobra.Command{
-	Use:   "log <id>",
-	Short: "Job output log",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAuth(); err != nil {
-			return err
-		}
-
-		tail, _ := cmd.Flags().GetInt("tail")
-
-		data, err := client.Get("/jobs/" + args[0])
-		if err != nil {
-			return err
-		}
-
-		var job api.Job
-		if err := json.Unmarshal(data, &job); err != nil {
-			return err
-		}
-
-		log := job.OutputLog
-		if tail > 0 && log != "" {
-			lines := strings.Split(log, "\n")
-			if len(lines) > tail {
-				lines = lines[len(lines)-tail:]
+	jobsCmd.AddCommand(&cobra.Command{
+		Use:  "show <id>",
+		Short: "Job details",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := d.requireAuth(); err != nil {
+				return err
 			}
-			log = strings.Join(lines, "\n")
-		}
-
-		fmt.Println(log)
-		return nil
-	},
-}
-
-var jobsFailuresCmd = &cobra.Command{
-	Use:   "failures",
-	Short: "Recent failed jobs",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pid, err := requireProject()
-		if err != nil {
-			return err
-		}
-
-		path := "/jobs?projectId=" + pid
-		if beadID, _ := jobsCmd.Flags().GetString("bead"); beadID != "" {
-			path += "&beadId=" + beadID
-		}
-
-		data, err := client.Get(path)
-		if err != nil {
-			return err
-		}
-
-		jobs, err := api.JSON[[]api.Job](data, nil)
-		if err != nil {
-			return err
-		}
-
-		count := 0
-		for _, j := range jobs {
-			if j.Status != "failed" {
-				continue
+			data, err := d.Client.Get("/jobs/" + args[0])
+			if err != nil {
+				return err
 			}
-			fmt.Println(output.FormatJobFailureLine(j))
-			count++
-			if count >= 10 {
-				break
-			}
-		}
-		return nil
-	},
-}
+			var raw json.RawMessage
+			json.Unmarshal(data, &raw)
+			out, _ := json.MarshalIndent(raw, "", "  ")
+			fmt.Println(string(out))
+			return nil
+		},
+	})
 
-func init() {
-	jobsLogCmd.Flags().Int("tail", 0, "Last N lines")
-	jobsFailuresCmd.Flags().String("bead", "", "Filter by bead ID")
+	logCmd := &cobra.Command{
+		Use:   "log <id>",
+		Short: "Job output log",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := d.requireAuth(); err != nil {
+				return err
+			}
+			tail, _ := cmd.Flags().GetInt("tail")
+
+			data, err := d.Client.Get("/jobs/" + args[0])
+			if err != nil {
+				return err
+			}
+
+			var job api.Job
+			if err := json.Unmarshal(data, &job); err != nil {
+				return err
+			}
+
+			log := job.OutputLog
+			if tail > 0 && log != "" {
+				lines := strings.Split(log, "\n")
+				if len(lines) > tail {
+					lines = lines[len(lines)-tail:]
+				}
+				log = strings.Join(lines, "\n")
+			}
+
+			fmt.Println(log)
+			return nil
+		},
+	}
+	logCmd.Flags().Int("tail", 0, "Last N lines")
+	jobsCmd.AddCommand(logCmd)
+
+	failuresCmd := &cobra.Command{
+		Use:   "failures",
+		Short: "Recent failed jobs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pid, err := d.requireProject(cmd)
+			if err != nil {
+				return err
+			}
+
+			path := "/jobs?projectId=" + pid
+			if beadID, _ := cmd.Flags().GetString("bead"); beadID != "" {
+				path += "&beadId=" + beadID
+			}
+
+			data, err := d.Client.Get(path)
+			if err != nil {
+				return err
+			}
+
+			jobs, err := api.JSON[[]api.Job](data, nil)
+			if err != nil {
+				return err
+			}
+
+			count := 0
+			for _, j := range jobs {
+				if j.Status != "failed" {
+					continue
+				}
+				fmt.Println(output.FormatJobFailureLine(j))
+				count++
+				if count >= 10 {
+					break
+				}
+			}
+			return nil
+		},
+	}
+	failuresCmd.Flags().String("bead", "", "Filter by bead ID")
+	jobsCmd.AddCommand(failuresCmd)
+
+	return jobsCmd
 }

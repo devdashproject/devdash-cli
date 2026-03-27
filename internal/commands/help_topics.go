@@ -6,9 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// RegisterHelpTopics overrides cobra's default help command to support topic subcommands.
-func RegisterHelpTopics() {
-	// Replace the default help command
+func registerHelpTopics(rootCmd *cobra.Command) {
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:   "help [topic]",
 		Short: "Help about devdash or a specific topic",
@@ -18,20 +16,17 @@ func RegisterHelpTopics() {
 				return rootCmd.Help()
 			}
 
-			// Check if it's a known topic
-			topic := args[0]
-			if text, ok := helpTopics[topic]; ok {
+			if text, ok := helpTopics[args[0]]; ok {
 				fmt.Println(text)
 				return nil
 			}
 
-			// Fall back to cobra's command help
 			target, _, err := rootCmd.Find(args)
 			if err == nil && target != nil {
 				return target.Help()
 			}
 
-			fmt.Printf("Unknown help topic: %s\n\nAvailable topics: cli, workflow, close, pr, projects, report\n", topic)
+			fmt.Printf("Unknown help topic: %s\n\nAvailable topics: cli, workflow, close, pr, projects, report\n", args[0])
 			return nil
 		},
 	})
@@ -142,18 +137,7 @@ read them to understand what happened.
   --commit=SHA           Git commit SHA
   --pr=URL               Pull request URL (if applicable)`,
 
-	"pr": `# Pull Request Format
-
-## DevDash Footer
-Every PR should include a DevDash footer section:
-
-  ## DevDash
-  Project: ` + "`95ca3de0-7e4f-4f9e-9b17-36f5609cfa11`" + `
-  Issues:
-  - [<issue-id>](https://dev-dash-blue.vercel.app/issue/<issue-id>)
-
-Replace <issue-id> with the full UUID of each devdash issue.
-If the PR addresses multiple issues, list each on its own line.`,
+	"pr": "# Pull Request Format\n\n## DevDash Footer\nEvery PR should include a DevDash footer section:\n\n  ## DevDash\n  Project: `95ca3de0-7e4f-4f9e-9b17-36f5609cfa11`\n  Issues:\n  - [<issue-id>](https://dev-dash-blue.vercel.app/issue/<issue-id>)\n\nReplace <issue-id> with the full UUID of each devdash issue.\nIf the PR addresses multiple issues, list each on its own line.",
 
 	"projects": `# Cross-Project Work
 

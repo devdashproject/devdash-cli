@@ -9,73 +9,72 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	createCmd.Flags().String("title", "", "Issue title (required)")
-	createCmd.Flags().String("description", "", "Issue description")
-	createCmd.Flags().String("type", "task", "Issue type: task, bug, feature, enhancement, thought")
-	createCmd.Flags().Int("priority", 2, "Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog")
-	createCmd.Flags().String("parent", "", "Parent bead ID")
-	createCmd.Flags().String("due", "", "Due date (YYYY-MM-DD)")
-	createCmd.Flags().Int("estimate", 0, "Estimated minutes")
-	rootCmd.AddCommand(createCmd)
-}
-
-var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new issue",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pid, err := requireProject()
-		if err != nil {
-			return err
-		}
-
-		title, _ := cmd.Flags().GetString("title")
-		if title == "" {
-			return fmt.Errorf("--title is required")
-		}
-
-		description, _ := cmd.Flags().GetString("description")
-		beadType, _ := cmd.Flags().GetString("type")
-		priority, _ := cmd.Flags().GetInt("priority")
-		parent, _ := cmd.Flags().GetString("parent")
-		due, _ := cmd.Flags().GetString("due")
-		estimate, _ := cmd.Flags().GetInt("estimate")
-
-		req := api.CreateBeadRequest{
-			ProjectID:   pid,
-			Subject:     title,
-			Description: description,
-			BeadType:    beadType,
-			Priority:    &priority,
-		}
-
-		if parent != "" {
-			parentUUID, err := resolve.IDWithFetch(parent, client, pid)
+func newCreateCmd(d *Deps) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a new issue",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pid, err := d.requireProject(cmd)
 			if err != nil {
-				return fmt.Errorf("failed to resolve parent ID: %w", err)
+				return err
 			}
-			req.ParentBeadID = parentUUID
-		}
 
-		if due != "" {
-			req.DueDate = due
-		}
+			title, _ := cmd.Flags().GetString("title")
+			if title == "" {
+				return fmt.Errorf("--title is required")
+			}
 
-		if cmd.Flags().Changed("estimate") {
-			req.EstimatedMinutes = &estimate
-		}
+			description, _ := cmd.Flags().GetString("description")
+			beadType, _ := cmd.Flags().GetString("type")
+			priority, _ := cmd.Flags().GetInt("priority")
+			parent, _ := cmd.Flags().GetString("parent")
+			due, _ := cmd.Flags().GetString("due")
+			estimate, _ := cmd.Flags().GetInt("estimate")
 
-		data, err := client.Post("/beads", req)
-		if err != nil {
-			return err
-		}
+			req := api.CreateBeadRequest{
+				ProjectID:   pid,
+				Subject:     title,
+				Description: description,
+				BeadType:    beadType,
+				Priority:    &priority,
+			}
 
-		var bead api.Bead
-		if err := json.Unmarshal(data, &bead); err != nil {
-			return fmt.Errorf("failed to parse response: %w", err)
-		}
+			if parent != "" {
+				parentUUID, err := resolve.IDWithFetch(parent, d.Client, pid)
+				if err != nil {
+					return fmt.Errorf("failed to resolve parent ID: %w", err)
+				}
+				req.ParentBeadID = parentUUID
+			}
 
-		fmt.Printf("Created: %s - %s\n", bead.ID, bead.Subject)
-		return nil
-	},
+			if due != "" {
+				req.DueDate = due
+			}
+
+			if cmd.Flags().Changed("estimate") {
+				req.EstimatedMinutes = &estimate
+			}
+
+			data, err := d.Client.Post("/beads", req)
+			if err != nil {
+				return err
+			}
+
+			var bead api.Bead
+			if err := json.Unmarshal(data, &bead); err != nil {
+				return fmt.Errorf("failed to parse response: %w", err)
+			}
+
+			fmt.Printf("Created: %s - %s\n", bead.ID, bead.Subject)
+			return nil
+		},
+	}
+	cmd.Flags().String("title", "", "Issue title (required)")
+	cmd.Flags().String("description", "", "Issue description")
+	cmd.Flags().String("type", "task", "Issue type: task, bug, feature, enhancement, thought")
+	cmd.Flags().Int("priority", 2, "Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog")
+	cmd.Flags().String("parent", "", "Parent bead ID")
+	cmd.Flags().String("due", "", "Due date (YYYY-MM-DD)")
+	cmd.Flags().Int("estimate", 0, "Estimated minutes")
+	return cmd
 }

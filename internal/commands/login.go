@@ -12,63 +12,61 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	loginCmd.Flags().Bool("no-browser", false, "Skip automatic browser launch")
-	rootCmd.AddCommand(loginCmd)
-}
+func newLoginCmd(d *Deps) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "login",
+		Short: "Authenticate with DevDash",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if d.Cfg == nil {
+				var err error
+				d.Cfg, err = config.Load()
+				if err != nil {
+					return err
+				}
+			}
 
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with DevDash",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Load config (may not have token yet)
-		if cfg == nil {
-			var err error
-			cfg, err = config.Load()
+			nonce, err := auth.GenerateNonce()
 			if err != nil {
 				return err
 			}
-		}
 
-		nonce, err := auth.GenerateNonce()
-		if err != nil {
-			return err
-		}
-
-		port, resultCh, cleanup, err := auth.StartCallbackServer(nonce)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-
-		authURL := fmt.Sprintf("%s/api/auth/cli-token?port=%d&nonce=%s", cfg.APIURL, port, nonce)
-
-		noBrowser, _ := cmd.Flags().GetBool("no-browser")
-		if noBrowser {
-			fmt.Printf("Open this URL in your browser:\n%s\n", authURL)
-		} else {
-			fmt.Println("Opening browser for authentication...")
-			if err := openBrowser(authURL); err != nil {
-				fmt.Printf("Could not open browser. Open this URL manually:\n%s\n", authURL)
+			port, resultCh, cleanup, err := auth.StartCallbackServer(nonce)
+			if err != nil {
+				return err
 			}
-		}
+			defer cleanup()
 
-		fmt.Println("Waiting for authentication (timeout: 120s)...")
+			authURL := fmt.Sprintf("%s/api/auth/cli-token?port=%d&nonce=%s", d.Cfg.APIURL, port, nonce)
 
-		select {
-		case result := <-resultCh:
-			if result.Error != nil {
-				return fmt.Errorf("authentication failed: %w", result.Error)
+			noBrowser, _ := cmd.Flags().GetBool("no-browser")
+			if noBrowser {
+				fmt.Printf("Open this URL in your browser:\n%s\n", authURL)
+			} else {
+				fmt.Println("Opening browser for authentication...")
+				if err := openBrowser(authURL); err != nil {
+					fmt.Printf("Could not open browser. Open this URL manually:\n%s\n", authURL)
+				}
 			}
-			if err := cfg.SaveToken(result.Token); err != nil {
-				return fmt.Errorf("failed to save token: %w", err)
+
+			fmt.Println("Waiting for authentication (timeout: 120s)...")
+
+			select {
+			case result := <-resultCh:
+				if result.Error != nil {
+					return fmt.Errorf("authentication failed: %w", result.Error)
+				}
+				if err := d.Cfg.SaveToken(result.Token); err != nil {
+					return fmt.Errorf("failed to save token: %w", err)
+				}
+				fmt.Println("Authentication successful! Token saved.")
+				return nil
+			case <-time.After(120 * time.Second):
+				return fmt.Errorf("authentication timed out after 120 seconds")
 			}
-			fmt.Println("Authentication successful! Token saved.")
-			return nil
-		case <-time.After(120 * time.Second):
-			return fmt.Errorf("authentication timed out after 120 seconds")
-		}
-	},
+		},
+	}
+	cmd.Flags().Bool("no-browser", false, "Skip automatic browser launch")
+	return cmd
 }
 
 func openBrowser(url string) error {
