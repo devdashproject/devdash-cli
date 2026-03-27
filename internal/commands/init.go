@@ -35,7 +35,7 @@ func newInitCmd(d *Deps) *cobra.Command {
 			}
 
 			var projects []api.Project
-			json.Unmarshal(data, &projects)
+			_ = json.Unmarshal(data, &projects)
 
 			var matched *api.Project
 			if repoName != "" {
@@ -74,7 +74,7 @@ func newInitCmd(d *Deps) *cobra.Command {
 					name := filepath.Base(mustGetwd())
 					fmt.Printf("Project name [%s]: ", name)
 					var input string
-					fmt.Scanln(&input)
+					_, _ = fmt.Scanln(&input)
 					if input != "" {
 						name = input
 					}
@@ -90,7 +90,7 @@ func newInitCmd(d *Deps) *cobra.Command {
 					}
 
 					var newProject api.Project
-					json.Unmarshal(data, &newProject)
+					_ = json.Unmarshal(data, &newProject)
 					projectID = newProject.ID
 					fmt.Printf("Created project: %s (%s)\n", newProject.Name, newProject.ID)
 				}

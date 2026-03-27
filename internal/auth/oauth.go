@@ -62,7 +62,7 @@ func StartCallbackServer(nonce string) (int, <-chan OAuthResult, func(), error) 
 		}
 
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, callbackHTML)
+		_, _ = fmt.Fprint(w, callbackHTML)
 		resultCh <- OAuthResult{Token: token}
 	})
 
@@ -77,7 +77,7 @@ func StartCallbackServer(nonce string) (int, <-chan OAuthResult, func(), error) 
 	cleanup := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		server.Shutdown(ctx)
+		_ = server.Shutdown(ctx)
 	}
 
 	return port, resultCh, cleanup, nil

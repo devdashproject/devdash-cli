@@ -33,7 +33,7 @@ func newDiagnoseCmd(d *Deps) *cobra.Command {
 			}
 
 			var bead api.Bead
-			json.Unmarshal(beadData, &bead)
+			_ = json.Unmarshal(beadData, &bead)
 
 			fmt.Println("── Bead ──")
 			fmt.Printf("%s  %s  [%s] [P%d] [%s]\n",
@@ -41,12 +41,12 @@ func newDiagnoseCmd(d *Deps) *cobra.Command {
 
 			jobsData, err := d.Client.Get("/jobs?projectId=" + pid)
 			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch jobs: %v\n", err)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch jobs: %v\n", err)
 				return nil
 			}
 
 			var jobs []api.Job
-			json.Unmarshal(jobsData, &jobs)
+			_ = json.Unmarshal(jobsData, &jobs)
 
 			var beadJobs []api.Job
 			for _, j := range jobs {

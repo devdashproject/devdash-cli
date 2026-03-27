@@ -42,7 +42,7 @@ func newAnalyzeCmd(d *Deps) *cobra.Command {
 
 			beadData, _ := d.Client.Get("/beads/" + uuid + "?projectId=" + pid)
 			var bead api.Bead
-			json.Unmarshal(beadData, &bead)
+			_ = json.Unmarshal(beadData, &bead)
 			fmt.Printf("Analyzing: %s\n\n", bead.Subject)
 
 			data, err := d.Client.Post("/jobs/analyze", map[string]string{"beadId": uuid, "projectId": pid})
@@ -51,7 +51,7 @@ func newAnalyzeCmd(d *Deps) *cobra.Command {
 			}
 
 			var job api.Job
-			json.Unmarshal(data, &job)
+			_ = json.Unmarshal(data, &job)
 
 			timeout := time.After(300 * time.Second)
 			ticker := time.NewTicker(5 * time.Second)
@@ -67,7 +67,7 @@ func newAnalyzeCmd(d *Deps) *cobra.Command {
 						continue
 					}
 					var current api.Job
-					json.Unmarshal(statusData, &current)
+					_ = json.Unmarshal(statusData, &current)
 
 					switch current.Status {
 					case "completed":

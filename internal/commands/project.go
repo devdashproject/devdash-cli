@@ -33,7 +33,7 @@ func newProjectCmd(d *Deps) *cobra.Command {
 				return err
 			}
 			var project api.Project
-			json.Unmarshal(data, &project)
+			_ = json.Unmarshal(data, &project)
 			fmt.Printf("Created project %s: %s\n", project.ID, project.Name)
 			return nil
 		},
@@ -54,7 +54,7 @@ func newProjectCmd(d *Deps) *cobra.Command {
 				return err
 			}
 			var projects []api.Project
-			json.Unmarshal(data, &projects)
+			_ = json.Unmarshal(data, &projects)
 			for _, p := range projects {
 				repo := ""
 				if p.GithubRepo != "" {

@@ -57,7 +57,7 @@ func newSelfUpdateCmd() *cobra.Command {
 			if err := c.Run(); err != nil {
 				return fmt.Errorf("download failed: %w", err)
 			}
-			os.Chmod(exe, 0755)
+			_ = os.Chmod(exe, 0755)
 			fmt.Println("Updated successfully.")
 			return nil
 		},
@@ -133,8 +133,8 @@ func newAliasSetupCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cannot write to %s: %w", rcFile, err)
 			}
-			defer f.Close()
-			fmt.Fprintf(f, "\n# DevDash alias\n%s\n", aliasLine)
+			defer func() { _ = f.Close() }()
+			_, _ = fmt.Fprintf(f, "\n# DevDash alias\n%s\n", aliasLine)
 			fmt.Printf("Added alias to %s\nRun: source %s\n", rcFile, rcFile)
 			return nil
 		},

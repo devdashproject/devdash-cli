@@ -24,7 +24,7 @@ func newTeamCmd(d *Deps) *cobra.Command {
 			}
 
 			var members []api.TeamMember
-			json.Unmarshal(data, &members)
+			_ = json.Unmarshal(data, &members)
 
 			if len(members) > 20 {
 				members = members[:20]

@@ -58,7 +58,7 @@ func newScoreCmd(d *Deps) *cobra.Command {
 				return err
 			}
 			var raw json.RawMessage
-			json.Unmarshal(data, &raw)
+			_ = json.Unmarshal(data, &raw)
 			out, _ := json.MarshalIndent(raw, "", "  ")
 			fmt.Println(string(out))
 			return nil

@@ -44,9 +44,9 @@ func newJobsCmd(d *Deps) *cobra.Command {
 	jobsCmd.Flags().String("bead", "", "Filter by bead ID")
 
 	jobsCmd.AddCommand(&cobra.Command{
-		Use:  "show <id>",
+		Use:   "show <id>",
 		Short: "Job details",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
 				return err
@@ -56,7 +56,7 @@ func newJobsCmd(d *Deps) *cobra.Command {
 				return err
 			}
 			var raw json.RawMessage
-			json.Unmarshal(data, &raw)
+			_ = json.Unmarshal(data, &raw)
 			out, _ := json.MarshalIndent(raw, "", "  ")
 			fmt.Println(string(out))
 			return nil

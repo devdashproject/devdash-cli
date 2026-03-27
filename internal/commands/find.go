@@ -29,7 +29,7 @@ func newFindCmd(d *Deps) *cobra.Command {
 			}
 
 			var raw json.RawMessage
-			json.Unmarshal(data, &raw)
+			_ = json.Unmarshal(data, &raw)
 			out, _ := json.MarshalIndent(raw, "", "  ")
 			fmt.Println(string(out))
 			return nil

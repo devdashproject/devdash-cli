@@ -50,7 +50,7 @@ func newReportCmd(d *Deps) *cobra.Command {
 
 			_, err = d.Client.Post("/beads/"+uuid+"/report", req)
 			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: report failed: %v\n", err)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: report failed: %v\n", err)
 				return nil
 			}
 

@@ -22,7 +22,7 @@ func newSyncCmd(d *Deps) *cobra.Command {
 				return err
 			}
 			var raw json.RawMessage
-			json.Unmarshal(data, &raw)
+			_ = json.Unmarshal(data, &raw)
 			out, _ := json.MarshalIndent(raw, "", "  ")
 			fmt.Println(string(out))
 			return nil
@@ -71,7 +71,9 @@ func newImportCmd(d *Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			var result struct{ BeadID string `json:"beadId"` }
+			var result struct {
+				BeadID string `json:"beadId"`
+			}
 			if json.Unmarshal(data, &result) == nil && result.BeadID != "" {
 				fmt.Printf("Imported as bead %s\n", result.BeadID)
 			} else {

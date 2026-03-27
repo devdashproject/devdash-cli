@@ -27,7 +27,7 @@ func newDispatchCmd(d *Deps) *cobra.Command {
 
 			beadData, _ := d.Client.Get("/beads/" + uuid + "?projectId=" + pid)
 			var bead api.Bead
-			json.Unmarshal(beadData, &bead)
+			_ = json.Unmarshal(beadData, &bead)
 
 			prompt := bead.PreInstructions
 			if prompt == "" {
@@ -52,7 +52,7 @@ func newDispatchCmd(d *Deps) *cobra.Command {
 			}
 
 			var job api.Job
-			json.Unmarshal(data, &job)
+			_ = json.Unmarshal(data, &job)
 
 			fmt.Printf("Job queued: %s\n", job.ID)
 			fmt.Printf("  Bead:   %s — %s\n", shortID(uuid), bead.Subject)

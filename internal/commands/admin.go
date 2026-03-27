@@ -37,14 +37,14 @@ func newAdminCmd(d *Deps) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("request failed: %w", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			body, _ := io.ReadAll(resp.Body)
 
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				return fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 			}
 			var raw json.RawMessage
-			json.Unmarshal(body, &raw)
+			_ = json.Unmarshal(body, &raw)
 			out, _ := json.MarshalIndent(raw, "", "  ")
 			fmt.Println(string(out))
 			return nil

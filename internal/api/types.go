@@ -57,7 +57,7 @@ type Bead struct {
 	BlockedBy []string `json:"blockedBy,omitempty"`
 	Blocks    []string `json:"blocks,omitempty"`
 
-	PreInstructions  string           `json:"preInstructions,omitempty"`
+	PreInstructions  string            `json:"preInstructions,omitempty"`
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 	BurnIntelligence *BurnIntelligence `json:"burnIntelligence,omitempty"`
 
@@ -79,11 +79,11 @@ type CompletionResult struct {
 
 // BurnIntelligence holds scoring data.
 type BurnIntelligence struct {
-	ComplexityScore    int      `json:"complexityScore"`
-	AutomabilityScore  int      `json:"automabilityScore"`
-	AutomabilityGrade  string   `json:"automabilityGrade"`
-	Factors            []string `json:"factors,omitempty"`
-	ScoredAt           string   `json:"scoredAt,omitempty"`
+	ComplexityScore   int      `json:"complexityScore"`
+	AutomabilityScore int      `json:"automabilityScore"`
+	AutomabilityGrade string   `json:"automabilityGrade"`
+	Factors           []string `json:"factors,omitempty"`
+	ScoredAt          string   `json:"scoredAt,omitempty"`
 }
 
 // Project represents a devdash project.
@@ -98,19 +98,19 @@ type Project struct {
 
 // Job represents an async job.
 type Job struct {
-	ID              string          `json:"id"`
-	BeadID          string          `json:"beadId,omitempty"`
-	ProjectID       string          `json:"projectId,omitempty"`
-	Status          string          `json:"status"`
-	WorkerType      string          `json:"workerType,omitempty"`
-	Prompt          string          `json:"prompt,omitempty"`
-	OutputLog       string          `json:"output_log,omitempty"`
-	Error           string          `json:"error,omitempty"`
+	ID              string           `json:"id"`
+	BeadID          string           `json:"beadId,omitempty"`
+	ProjectID       string           `json:"projectId,omitempty"`
+	Status          string           `json:"status"`
+	WorkerType      string           `json:"workerType,omitempty"`
+	Prompt          string           `json:"prompt,omitempty"`
+	OutputLog       string           `json:"output_log,omitempty"`
+	Error           string           `json:"error,omitempty"`
 	FailureAnalysis *FailureAnalysis `json:"failureAnalysis,omitempty"`
-	Result          interface{}     `json:"result,omitempty"`
-	CreatedAt       string          `json:"createdAt,omitempty"`
-	StartedAt       string          `json:"startedAt,omitempty"`
-	CompletedAt     string          `json:"completedAt,omitempty"`
+	Result          interface{}      `json:"result,omitempty"`
+	CreatedAt       string           `json:"createdAt,omitempty"`
+	StartedAt       string           `json:"startedAt,omitempty"`
+	CompletedAt     string           `json:"completedAt,omitempty"`
 }
 
 // FailureAnalysis holds diagnostic info for failed jobs.
@@ -156,7 +156,7 @@ type UpdateBeadRequest struct {
 
 // CloseBeadRequest is the body for closing a single bead.
 type CloseBeadRequest struct {
-	Status           string           `json:"status"`
+	Status           string            `json:"status"`
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 }
 
@@ -167,7 +167,7 @@ type BulkCloseRequest struct {
 
 // BulkCloseItem is a single bead in a bulk close.
 type BulkCloseItem struct {
-	ID               string           `json:"id"`
+	ID               string            `json:"id"`
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 }
 

@@ -21,17 +21,17 @@ func newPrimeCmd(d *Deps) *cobra.Command {
 
 			projData, _ := d.Client.Get("/projects/" + pid)
 			var project api.Project
-			json.Unmarshal(projData, &project)
+			_ = json.Unmarshal(projData, &project)
 
 			allProjData, _ := d.Client.Get("/projects")
 			var allProjects []api.Project
-			json.Unmarshal(allProjData, &allProjects)
+			_ = json.Unmarshal(allProjData, &allProjects)
 
 			beads, _ := api.FetchAll[api.Bead](d.Client, "/beads?projectId="+pid)
 
 			teamData, _ := d.Client.Get("/projects/" + pid + "/members?format=compact")
 			var members []api.TeamMember
-			json.Unmarshal(teamData, &members)
+			_ = json.Unmarshal(teamData, &members)
 
 			var open, inProgress, blocked int
 			completedIDs := make(map[string]bool)
