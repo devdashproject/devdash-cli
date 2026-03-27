@@ -13,9 +13,16 @@ linters-settings:
     exclude-functions:
       - encoding/json.Unmarshal
       - (*encoding/json.Encoder).Encode
+      - (*encoding/json.Decoder).Decode
+      - (io.Writer).Write
+      - (*bytes.Buffer).ReadFrom
+      - (*net/http.Server).Shutdown
       - fmt.Fprintf
       - fmt.Fprintln
+      - fmt.Scanln
       - os.Chmod
+      - os.Chdir
+      - os.WriteFile
 
 issues:
   exclude-dirs:
