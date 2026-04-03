@@ -594,6 +594,70 @@ func TestPrimeCommandDualStartup(t *testing.T) {
 	}
 }
 
+func TestAgentSetupCodexDetection(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	_ = os.WriteFile("AGENTS.md", []byte("# My project"), 0644)
+	agents := detectAgents()
+	found := false
+	for _, a := range agents {
+		if a == "codex" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("detectAgents should find codex when AGENTS.md exists, got: %v", agents)
+	}
+}
+
+func TestAgentSetupCodexWrite(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	err := setupCodex("test-pid", "push", false)
+	if err != nil {
+		t.Fatalf("setupCodex failed: %v", err)
+	}
+
+	data, err := os.ReadFile("AGENTS.md")
+	if err != nil {
+		t.Fatalf("AGENTS.md not created: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "devdash") {
+		t.Errorf("AGENTS.md should contain 'devdash', got: %s", content)
+	}
+	if !strings.Contains(content, "devdash prime") {
+		t.Errorf("should mention devdash prime, got: %s", content)
+	}
+	if !strings.Contains(content, "test-pid") {
+		t.Errorf("should contain project ID, got: %s", content)
+	}
+}
+
+func TestAgentSetupCodexNoOverwrite(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	_ = os.WriteFile("AGENTS.md", []byte("# Existing devdash instructions"), 0644)
+	err := setupCodex("test-pid", "push", false)
+	if err != nil {
+		t.Fatalf("setupCodex failed: %v", err)
+	}
+
+	data, _ := os.ReadFile("AGENTS.md")
+	if !strings.HasPrefix(string(data), "# Existing") {
+		t.Errorf("should preserve existing content, got: %s", string(data))
+	}
+}
+
 func TestHelpTopicCLIDescriptions(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("help", "cli")

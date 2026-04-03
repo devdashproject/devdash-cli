@@ -58,6 +58,9 @@ func detectAgents() []string {
 	} else if _, err := os.Stat(".claude"); err == nil {
 		agents = append(agents, "claude")
 	}
+	if _, err := os.Stat("AGENTS.md"); err == nil {
+		agents = append(agents, "codex")
+	}
 	if _, err := os.Stat(".github/copilot-instructions.md"); err == nil {
 		agents = append(agents, "copilot")
 	}
@@ -68,6 +71,8 @@ func setupAgent(agent, pid, closeOn string, force bool) error {
 	switch agent {
 	case "claude":
 		return setupClaude(pid, closeOn, force)
+	case "codex":
+		return setupCodex(pid, closeOn, force)
 	default:
 		return fmt.Errorf("unsupported agent: %s", agent)
 	}
@@ -100,6 +105,55 @@ This project uses **devdash** for task tracking.
 devdash ready → devdash show <id> → devdash update <id> --status=in_progress
 git add → git commit → git %s → devdash close <id> --summary="..." --commit=$(git rev-parse HEAD)
 `, closeOn, pid, closeOn)
+
+	var content []byte
+	if existing, err := os.ReadFile(target); err == nil && !force {
+		content = append(existing, []byte("\n\n"+instructions)...)
+	} else {
+		content = []byte(instructions)
+	}
+
+	if err := os.WriteFile(target, content, 0644); err != nil {
+		return err
+	}
+	fmt.Printf("  ✓ %s configured for devdash\n", target)
+	return nil
+}
+
+func setupCodex(pid, closeOn string, force bool) error {
+	target := "AGENTS.md"
+	if !force {
+		if _, err := os.Stat(target); err == nil {
+			data, _ := os.ReadFile(target)
+			if strings.Contains(string(data), "devdash") {
+				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
+				return nil
+			}
+		}
+	}
+
+	instructions := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
+
+This project uses **devdash** for task tracking. Project ID: %s
+
+## Agent-Specific Instructions
+
+- Run `+"`devdash prime`"+` at the start of every new session. Run it again after any handoff, compaction, or context-loss event.
+- If the user already named a specific devdash issue, follow `+"`devdash prime`"+` with `+"`devdash show <id>`"+` and `+"`devdash update <id> --status=in_progress`"+` instead of `+"`devdash ready`"+`.
+- Use `+"`devdash ready`"+` only when the user has not already chosen the task.
+- For command discovery, prefer `+"`devdash help`"+` and topic help commands such as `+"`devdash help cli`"+` before probing subcommands with `+"`--help`"+`.
+- Use `+"`devdash --help`"+` when you need command syntax, capabilities, or supported workflow and a topic help entry is not enough.
+- Minimize redundant startup work after `+"`devdash prime`"+`. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
+- Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
+- Avoid commands whose only purpose is to reconfirm information already present in the prompt, local instructions, or recent command output.
+- Run devdash commands yourself in the terminal; do not ask the user to run them for you.
+- Before making code changes, make sure a devdash issue exists and is marked `+"`in_progress`"+`.
+- Before each commit, confirm that the commit maps to exactly one devdash issue.
+- Report progress with `+"`devdash report`"+` at `+"`code_complete`"+`, `+"`committed`"+`, and `+"`pushed`"+`.
+- Never close a devdash issue until `+"`git %s`"+` succeeds.
+- Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
+- Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.
+`, pid, closeOn)
 
 	var content []byte
 	if existing, err := os.ReadFile(target); err == nil && !force {
