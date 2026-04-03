@@ -228,6 +228,27 @@ func TestCreateCommandDashTitle(t *testing.T) {
 	}
 }
 
+func TestAnalyzeCommandAsync(t *testing.T) {
+	beads := apiPkg.SampleBeads()
+	run := newTestEnv(t, beads)
+	out, err := run("analyze", beads[0].ID)
+	if err != nil {
+		t.Fatalf("analyze failed: %v", err)
+	}
+	if !strings.Contains(out, "Analysis queued:") {
+		t.Errorf("should contain 'Analysis queued:', got: %s", out)
+	}
+	if !strings.Contains(out, "devdash jobs show") {
+		t.Errorf("should contain check-status hint, got: %s", out)
+	}
+	if !strings.Contains(out, "job-001") {
+		t.Errorf("should contain full job ID on stdout, got: %s", out)
+	}
+	if strings.Contains(out, "Complexity:") {
+		t.Errorf("should not contain analysis results (async mode), got: %s", out)
+	}
+}
+
 func TestUpdateCommand(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
