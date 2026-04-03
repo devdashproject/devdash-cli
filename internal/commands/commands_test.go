@@ -580,6 +580,34 @@ func TestHelpTopicWorkflow(t *testing.T) {
 	}
 }
 
+func TestPrimeCommandDualStartup(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("prime")
+	if err != nil {
+		t.Fatalf("prime failed: %v", err)
+	}
+	if !strings.Contains(out, "Start (task already named)") {
+		t.Errorf("should contain 'Start (task already named)', got: %s", out)
+	}
+	if !strings.Contains(out, "Start (need a task)") {
+		t.Errorf("should contain 'Start (need a task)', got: %s", out)
+	}
+}
+
+func TestHelpTopicCLIDescriptions(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "cli")
+	if err != nil {
+		t.Fatalf("help cli failed: %v", err)
+	}
+	if !strings.Contains(out, "choose what to work on next") {
+		t.Errorf("ready description should mention 'choose what to work on next', got: %s", out)
+	}
+	if !strings.Contains(out, "Start here when the user already named the issue") {
+		t.Errorf("show description should mention starting point, got: %s", out)
+	}
+}
+
 func TestHelpTopicUnknown(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("help", "nonexistent")

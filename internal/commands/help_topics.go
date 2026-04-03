@@ -36,10 +36,10 @@ var helpTopics = map[string]string{
 	"cli": `# DevDash CLI Reference
 
 ## Commands
-  ready [--since=X]                    Pending + unblocked issues sorted by priority
+  ready [--since=X]                    Pending + unblocked issues sorted by priority. Excludes thoughts. Use this when you need to choose what to work on next.
   list [--status=X] [--since=X]       All issues, optionally filtered
   blocked                              Pending issues with unsatisfied dependencies
-  show <id>                            Full issue detail
+  show <id>                            Full issue detail: description, dependencies, pre-instructions, parent. Start here when the user already named the issue.
   find <uuid>                          Cross-project bead lookup (full UUID required)
   stats                                Project health: open/closed/blocked counts
   stale [--since=X]                    In-progress issues with no recent activity

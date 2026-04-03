@@ -119,7 +119,8 @@ func newPrimeCmd(d *Deps) *cobra.Command {
 			fmt.Println()
 
 			fmt.Println("## Quick Reference")
-			fmt.Println("- **Start**: `devdash ready` → `devdash show <id>` → `devdash update <id> --status=in_progress`")
+			fmt.Println("- **Start (task already named)**: `devdash show <id>` → `devdash update <id> --status=in_progress`")
+			fmt.Println("- **Start (need a task)**: `devdash ready` → `devdash show <id>` → `devdash update <id> --status=in_progress`")
 			fmt.Println("- **Complete**: git add → commit → push → `devdash close <id> --summary=\"...\" --commit=$(git rev-parse HEAD)`")
 			fmt.Println("- **Report**: `devdash report <id> --status=code_complete|committed|pushed|error --summary=\"...\"`")
 			fmt.Println("- Close summaries are institutional memory — include what, why, decisions, surprises, follow-ups.")
