@@ -12,11 +12,14 @@
     "@devdashproject/devdash-darwin-arm64": "0.3.0",
     "@devdashproject/devdash-darwin-x64": "0.3.0",
     "@devdashproject/devdash-linux-x64": "0.3.0",
-    "@devdashproject/devdash-linux-arm64": "0.3.0"
+    "@devdashproject/devdash-linux-arm64": "0.3.0",
+    "@devdashproject/devdash-win32-x64": "0.3.0",
+    "@devdashproject/devdash-win32-arm64": "0.3.0"
   },
   "os": [
     "darwin",
-    "linux"
+    "linux",
+    "win32"
   ],
   "engines": {
     "node": ">=18"

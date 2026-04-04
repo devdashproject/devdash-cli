@@ -53,6 +53,22 @@ const PLATFORMS = [
     goreleaseArch: "arm64",
     npmName: "devdash-linux-arm64",
   },
+  {
+    os: "windows",
+    arch: "amd64",
+    npmArch: "x64",
+    goreleaseArch: "amd64",
+    npmName: "devdash-win32-x64",
+    binary: "devdash.exe",
+  },
+  {
+    os: "windows",
+    arch: "arm64",
+    npmArch: "arm64",
+    goreleaseArch: "arm64",
+    npmName: "devdash-win32-arm64",
+    binary: "devdash.exe",
+  },
 ];
 
 const distDir = path.join(__dirname, "..", "dist");
@@ -63,15 +79,16 @@ for (const platform of PLATFORMS) {
   fs.mkdirSync(binDir, { recursive: true });
 
   // Find the binary from goreleaser output
+  const binaryName = platform.binary || "devdash";
   const archiveDir = `devdash_${platform.os}_${platform.goreleaseArch}`;
-  const binarySrc = path.join(distDir, archiveDir, "devdash");
+  const binarySrc = path.join(distDir, archiveDir, binaryName);
 
   if (!fs.existsSync(binarySrc)) {
     // Try alternative naming (goreleaser v2 format)
     const altDir = `devdash_${platform.os}_${platform.goreleaseArch}_v1`;
-    const altSrc = path.join(distDir, altDir, "devdash");
+    const altSrc = path.join(distDir, altDir, binaryName);
     if (fs.existsSync(altSrc)) {
-      fs.copyFileSync(altSrc, path.join(binDir, "devdash"));
+      fs.copyFileSync(altSrc, path.join(binDir, binaryName));
     } else {
       console.warn(
         `Warning: binary not found for ${platform.os}/${platform.goreleaseArch}`
@@ -79,20 +96,21 @@ for (const platform of PLATFORMS) {
       continue;
     }
   } else {
-    fs.copyFileSync(binarySrc, path.join(binDir, "devdash"));
+    fs.copyFileSync(binarySrc, path.join(binDir, binaryName));
   }
 
-  fs.chmodSync(path.join(binDir, "devdash"), 0o755);
+  fs.chmodSync(path.join(binDir, binaryName), 0o755);
 
   // Write package.json
+  const npmOs = platform.os === "windows" ? "win32" : platform.os;
   const pkg = {
     name: `@devdashproject/${platform.npmName}`,
     version: version,
-    description: `DevDash CLI binary for ${platform.os}/${platform.npmArch}`,
-    os: [platform.os],
+    description: `DevDash CLI binary for ${npmOs}/${platform.npmArch}`,
+    os: [npmOs],
     cpu: [platform.npmArch],
     bin: {
-      devdash: "bin/devdash",
+      devdash: `bin/${binaryName}`,
     },
     repository: {
       type: "git",

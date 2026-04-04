@@ -6,6 +6,8 @@ const PLATFORM_PACKAGES = {
   "darwin-x64": "@devdashproject/devdash-darwin-x64",
   "linux-x64": "@devdashproject/devdash-linux-x64",
   "linux-arm64": "@devdashproject/devdash-linux-arm64",
+  "win32-x64": "@devdashproject/devdash-win32-x64",
+  "win32-arm64": "@devdashproject/devdash-win32-arm64",
 };
 
 const key = `${os.platform()}-${os.arch()}`;
