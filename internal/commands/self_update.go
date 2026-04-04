@@ -1,8 +1,13 @@
 package commands
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,15 +55,15 @@ func newSelfUpdateCmd() *cobra.Command {
 
 			// Fetch latest version from GitHub API
 			fmt.Println("Fetching latest version...")
-			out, err := exec.Command("curl", "-fsSL",
-				"https://api.github.com/repos/jasonmassey/devdash-cli-go/releases/latest").Output()
+			resp, err := http.Get("https://api.github.com/repos/jasonmassey/devdash-cli-go/releases/latest")
 			if err != nil {
 				return fmt.Errorf("failed to check latest version: %w", err)
 			}
+			defer func() { _ = resp.Body.Close() }()
 			var release struct {
 				TagName string `json:"tag_name"`
 			}
-			if err := json.Unmarshal(out, &release); err != nil {
+			if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 				return fmt.Errorf("failed to parse release info: %w", err)
 			}
 			version := strings.TrimPrefix(release.TagName, "v")
@@ -66,8 +71,17 @@ func newSelfUpdateCmd() *cobra.Command {
 				return fmt.Errorf("could not determine latest version")
 			}
 
+			ext := "tar.gz"
+			if runtime.GOOS == "windows" {
+				ext = "zip"
+			}
+			binaryName := "devdash"
+			if runtime.GOOS == "windows" {
+				binaryName = "devdash.exe"
+			}
+
 			fmt.Printf("Downloading devdash v%s...\n", version)
-			archive := fmt.Sprintf("devdash_%s_%s_%s.tar.gz", version, runtime.GOOS, runtime.GOARCH)
+			archive := fmt.Sprintf("devdash_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
 			url := fmt.Sprintf(
 				"https://github.com/jasonmassey/devdash-cli-go/releases/download/%s/%s",
 				release.TagName, archive)
@@ -79,18 +93,21 @@ func newSelfUpdateCmd() *cobra.Command {
 			defer func() { _ = os.RemoveAll(tmpDir) }()
 
 			archivePath := filepath.Join(tmpDir, archive)
-			dl := exec.Command("curl", "-fsSL", "-o", archivePath, url)
-			dl.Stderr = os.Stderr
-			if err := dl.Run(); err != nil {
+			if err := downloadFile(url, archivePath); err != nil {
 				return fmt.Errorf("download failed: %w", err)
 			}
 
-			extract := exec.Command("tar", "-xzf", archivePath, "-C", tmpDir)
-			if err := extract.Run(); err != nil {
-				return fmt.Errorf("extraction failed: %w", err)
+			src := filepath.Join(tmpDir, binaryName)
+			if ext == "zip" {
+				if err := extractZip(archivePath, binaryName, src); err != nil {
+					return fmt.Errorf("extraction failed: %w", err)
+				}
+			} else {
+				if err := extractTarGz(archivePath, binaryName, src); err != nil {
+					return fmt.Errorf("extraction failed: %w", err)
+				}
 			}
 
-			src := filepath.Join(tmpDir, "devdash")
 			if err := copyFile(src, exe); err != nil {
 				return fmt.Errorf("failed to install binary: %w", err)
 			}
@@ -176,6 +193,82 @@ func newAliasSetupCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func downloadFile(url, dest string) error {
+	resp, err := http.Get(url) //nolint:gosec // URL is constructed from GitHub API response
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
+
+func extractTarGz(archivePath, binaryName, dest string) error {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = gz.Close() }()
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			return fmt.Errorf("%s not found in archive", binaryName)
+		}
+		if err != nil {
+			return err
+		}
+		if filepath.Base(hdr.Name) == binaryName {
+			out, err := os.Create(dest)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = out.Close() }()
+			_, err = io.Copy(out, tr) //nolint:gosec // archive from trusted GitHub release
+			return err
+		}
+	}
+}
+
+func extractZip(archivePath, binaryName, dest string) error {
+	r, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = r.Close() }()
+	for _, f := range r.File {
+		if filepath.Base(f.Name) != binaryName {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rc.Close() }()
+		out, err := os.Create(dest)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = out.Close() }()
+		_, err = io.Copy(out, rc) //nolint:gosec // archive from trusted GitHub release
+		return err
+	}
+	return fmt.Errorf("%s not found in archive", binaryName)
 }
 
 func copyFile(src, dst string) error {

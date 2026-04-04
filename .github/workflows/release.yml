@@ -50,7 +50,7 @@ jobs:
 
       - name: Publish platform packages
         run: |
-          for dir in npm/devdash-darwin-arm64 npm/devdash-darwin-x64 npm/devdash-linux-x64 npm/devdash-linux-arm64; do
+          for dir in npm/devdash-darwin-arm64 npm/devdash-darwin-x64 npm/devdash-linux-x64 npm/devdash-linux-arm64 npm/devdash-win32-x64 npm/devdash-win32-arm64; do
             if [ -d "$dir" ]; then
               cd "$dir"
               npm publish --access public || true

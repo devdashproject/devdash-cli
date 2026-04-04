@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +30,10 @@ jobs:
 
       - name: Build
         run: go build -o devdash ./cmd/devdash
+        shell: bash
 
       - name: Smoke test
         run: |
           ./devdash version
-          ./devdash help cli | head -5
+          ./devdash help cli
+        shell: bash

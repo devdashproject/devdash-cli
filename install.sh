@@ -22,7 +22,8 @@ case "$ARCH" in
 esac
 
 case "$OS" in
-  darwin|linux) ;;
+  darwin|linux) EXT="tar.gz" ;;
+  mingw*|msys*|cygwin*|windows*) OS="windows"; EXT="zip" ;;
   *)
     echo "Error: unsupported OS: $OS"
     exit 1
@@ -41,8 +42,12 @@ fi
 echo "Installing devdash v${VERSION} (${OS}/${ARCH})..."
 
 # Download
-ARCHIVE="devdash_${VERSION}_${OS}_${ARCH}.tar.gz"
+ARCHIVE="devdash_${VERSION}_${OS}_${ARCH}.${EXT}"
 URL="https://github.com/$REPO/releases/download/v${VERSION}/${ARCHIVE}"
+
+if [ "$OS" = "windows" ]; then
+  BINARY="devdash.exe"
+fi
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -51,7 +56,11 @@ echo "Downloading $URL..."
 curl -fsSL "$URL" -o "$TMPDIR/$ARCHIVE"
 
 # Extract
-tar -xzf "$TMPDIR/$ARCHIVE" -C "$TMPDIR"
+if [ "$EXT" = "zip" ]; then
+  unzip -q "$TMPDIR/$ARCHIVE" -d "$TMPDIR"
+else
+  tar -xzf "$TMPDIR/$ARCHIVE" -C "$TMPDIR"
+fi
 
 # Install
 mkdir -p "$INSTALL_DIR"
