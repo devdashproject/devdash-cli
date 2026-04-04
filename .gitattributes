@@ -1,0 +1,4 @@
+# Ensure consistent line endings for Go source files
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
