@@ -29,7 +29,7 @@ func newReportCmd(d *Deps) *cobra.Command {
 				return err
 			}
 
-			req := api.ReportRequest{Status: status}
+			req := api.ReportRequest{ProjectID: pid, Status: status}
 
 			if v, _ := cmd.Flags().GetString("summary"); v != "" {
 				req.Summary = v
@@ -42,7 +42,7 @@ func newReportCmd(d *Deps) *cobra.Command {
 				req.Branch = v
 			}
 			if v, _ := cmd.Flags().GetString("commit"); v != "" {
-				req.Commit = v
+				req.CommitSha = v
 			}
 			if v, _ := cmd.Flags().GetString("error"); v != "" {
 				req.Error = v

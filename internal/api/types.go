@@ -143,6 +143,7 @@ type CreateBeadRequest struct {
 
 // UpdateBeadRequest is the body for PATCH /beads/{id}.
 type UpdateBeadRequest struct {
+	ProjectID        string  `json:"projectId"`
 	Subject          *string `json:"subject,omitempty"`
 	Description      *string `json:"description,omitempty"`
 	Status           *string `json:"status,omitempty"`
@@ -156,13 +157,15 @@ type UpdateBeadRequest struct {
 
 // CloseBeadRequest is the body for closing a single bead.
 type CloseBeadRequest struct {
+	ProjectID        string            `json:"projectId"`
 	Status           string            `json:"status"`
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 }
 
 // BulkCloseRequest is the body for POST /beads/bulk/close.
 type BulkCloseRequest struct {
-	Beads []BulkCloseItem `json:"beads"`
+	ProjectID string          `json:"projectId"`
+	Beads     []BulkCloseItem `json:"beads"`
 }
 
 // BulkCloseItem is a single bead in a bulk close.
@@ -173,20 +176,23 @@ type BulkCloseItem struct {
 
 // ReportRequest is the body for POST /beads/{id}/report.
 type ReportRequest struct {
+	ProjectID    string `json:"projectId"`
 	Status       string `json:"status"`
 	Summary      string `json:"summary,omitempty"`
 	FilesChanged *int   `json:"filesChanged,omitempty"`
 	Branch       string `json:"branch,omitempty"`
-	Commit       string `json:"commit,omitempty"`
+	CommitSha    string `json:"commitSha,omitempty"`
 	Error        string `json:"error,omitempty"`
 }
 
 // AddDependencyRequest is the body for POST /beads/{id}/dependencies.
 type AddDependencyRequest struct {
+	ProjectID string `json:"projectId"`
 	BlockedBy string `json:"blockedBy"`
 }
 
 // CommentRequest is the body for POST /beads/{id}/comments.
 type CommentRequest struct {
-	Body string `json:"body"`
+	ProjectID string `json:"projectId"`
+	Body      string `json:"body"`
 }

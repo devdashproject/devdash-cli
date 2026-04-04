@@ -25,6 +25,7 @@ func newUpdateCmd(d *Deps) *cobra.Command {
 			}
 
 			req := api.UpdateBeadRequest{}
+			req.ProjectID = pid
 			hasChanges := false
 
 			if cmd.Flags().Changed("status") {

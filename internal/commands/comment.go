@@ -30,7 +30,7 @@ func newCommentCmd(d *Deps) *cobra.Command {
 				return err
 			}
 
-			_, err = d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{Body: body})
+			_, err = d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{ProjectID: pid, Body: body})
 			return err
 		},
 	}

@@ -43,7 +43,7 @@ func newCloseCmd(d *Deps) *cobra.Command {
 			}
 
 			if len(uuids) == 1 {
-				req := api.CloseBeadRequest{Status: "completed", CompletionResult: cr}
+				req := api.CloseBeadRequest{ProjectID: pid, Status: "completed", CompletionResult: cr}
 				_, err := d.Client.Patch("/beads/"+uuids[0], req)
 				if err != nil {
 					return err
@@ -57,7 +57,7 @@ func newCloseCmd(d *Deps) *cobra.Command {
 				items[i] = api.BulkCloseItem{ID: uuid, CompletionResult: cr}
 			}
 
-			_, err = d.Client.Post("/beads/bulk/close", api.BulkCloseRequest{Beads: items})
+			_, err = d.Client.Post("/beads/bulk/close", api.BulkCloseRequest{ProjectID: pid, Beads: items})
 			if err != nil {
 				return err
 			}

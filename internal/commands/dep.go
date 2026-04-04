@@ -46,7 +46,7 @@ func newDepCmd(d *Deps) *cobra.Command {
 				return fmt.Errorf("failed to resolve dependency %q: %w", args[1], err)
 			}
 
-			_, err = d.Client.Post("/beads/"+issueUUID+"/dependencies", api.AddDependencyRequest{BlockedBy: depUUID})
+			_, err = d.Client.Post("/beads/"+issueUUID+"/dependencies", api.AddDependencyRequest{ProjectID: pid, BlockedBy: depUUID})
 			if err != nil {
 				return err
 			}
