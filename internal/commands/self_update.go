@@ -76,7 +76,7 @@ func newSelfUpdateCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create temp dir: %w", err)
 			}
-			defer os.RemoveAll(tmpDir)
+			defer func() { _ = os.RemoveAll(tmpDir) }()
 
 			archivePath := filepath.Join(tmpDir, archive)
 			dl := exec.Command("curl", "-fsSL", "-o", archivePath, url)
