@@ -41,7 +41,7 @@ If anything looks off, run `devdash doctor` — it'll tell you exactly what's mi
 devdash login
 ```
 
-Your browser will open for Google sign-in. After you authenticate, the token is saved locally and you're done — no passwords to remember, no keys to paste.
+Your browser will open for Google sign-in. After you authenticate, the auth token is saved locally and you're done — no passwords to remember, no keys to paste.
 
 > **First time?** If you don't have a Dev-Dash account yet, one is created automatically when you sign in with Google. No separate signup required.
 
@@ -56,15 +56,15 @@ Your browser will open for Google sign-in. After you authenticate, the token is 
 3. Pick a repo from the list (or enter a project name manually)
 4. Hit **Create Project**
 
-Dev-Dash will scan your GitHub issues and pull them in as tasks automatically. You can see them immediately in the **Tasks** tab.
+Dev-Dash can scan your GitHub issues and pull them in as tasks, but sometimes it's nice to have a clean slate 😁. Now that you have a project, let's link up your local work. 
 
-Then in your terminal, inside the repo:
+In your terminal, navigate to the root of the repo you want to work in:
 
 ```bash
 devdash init
 ```
 
-It auto-detects your GitHub remote (case-insensitive) and links the CLI to your project. If auto-detect fails, you'll see a numbered list to pick from — or you can pass a name or ID directly:
+`init` auto-detects your GitHub remote (case-insensitive) and links the CLI to your project. If auto-detect fails, you'll see a numbered list to pick from — or you can pass a name or ID directly:
 
 ```bash
 devdash init MyProject          # Match by name (case-insensitive)
@@ -97,7 +97,7 @@ devdash alias-setup
 
 From here on, the examples use `dd`. If you skipped the alias, substitute `devdash` everywhere.
 
-> **Heads up:** This shadows `/usr/bin/dd` (a Unix disk-copy utility). If you use that tool regularly, skip the alias and use the full name `devdash`.
+> **Heads up:** The alias installation shadows `/usr/bin/dd` (a Unix disk-copy utility). If you use that tool regularly, skip the alias and use the full name `devdash`.
 
 ---
 
@@ -105,7 +105,7 @@ From here on, the examples use `dd`. If you skipped the alias, substitute `devda
 
 If you use AI coding agents (Claude Code, Codex, Cursor, Copilot, Windsurf, Cline), you can auto-generate config files so they know to use `dd` for task tracking.
 
-`devdash init` will detect agent configs and offer to run this automatically. You can also run it directly:
+`devdash init` will detect agent configs and offer to run this during setup. You can also run it directly:
 
 ```bash
 dd agent-setup
@@ -208,21 +208,23 @@ The CLI handles task management, but the dashboard gives you a few extras:
 | **API keys** (Anthropic, OpenAI) | Settings page (top-right menu) |
 | **GitHub connection** | Settings > GitHub |
 
-To invite a teammate, go to your project settings and add their email. When they sign in with Google, they'll automatically get access.
+To invite a teammate, go to your project settings and add their email. When they sign into Dev-Dash with Google, they'll automatically get access to your project, following the permissions you specify.
 
 ---
 
 ## Working with AI agents
 
-Dev-Dash is designed to work alongside AI coding agents like Claude Code.
+Dev-Dash is designed to work alongside AI coding agents like Claude Code. *Any agent* that can run a CLI command can work with Dev-Dash to create and retrieve issues in real time. Tell your agent to use `devdash` to create an issue for you, or retrieve details about existing issues in your projects. Dev-Dash is designed to work with agents directly, and the CLI installation (see `agent-setup`) helps your agent understand how to use `devdash` commands effectively.
 
-### Inject context into your agent session
+### Inject context about Dev-Dash and the current project
 
 ```bash
 dd prime
 ```
 
 This outputs a structured block of context — your project name, health stats, available commands, and workflow patterns. Set it up as a session hook so your agent always knows how to use `dd`.
+
+If in doubt, tell the agent to run `dd prime` and `dd help`.
 
 ### Dispatch agents from the dashboard
 
