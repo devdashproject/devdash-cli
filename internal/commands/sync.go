@@ -12,6 +12,15 @@ func newSyncCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sync",
 		Short: "Trigger full GitHub reconciliation",
+		Long: `Trigger a full GitHub reconciliation for the current project.
+
+Syncs issue state, labels, and metadata between GitHub and devdash
+so both systems reflect the same reality. The sync runs server-side
+and returns a JSON summary of what changed.
+
+Use this after making changes directly in GitHub (closing issues,
+editing labels, updating milestones) to pull those changes back
+into devdash.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
@@ -34,6 +43,14 @@ func newImportCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import <issue-number> | --all",
 		Short: "Import GitHub issues",
+		Long: `Import GitHub issues into devdash as beads.
+
+Pass a single issue number to import one issue, or use --all to bulk-import
+every issue from the linked GitHub repository. With --all you can filter by
+state (e.g. --state=open).
+
+Returns the imported bead ID for single imports or a count of imported issues
+for bulk imports. Requires a project with a linked GitHub repository.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

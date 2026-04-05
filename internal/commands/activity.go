@@ -12,6 +12,11 @@ func newActivityCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "activity [<id>]",
 		Short: "View activity log",
+		Long: `View the activity log for the current project or a specific issue.
+
+Without arguments, shows all recent activity across the project. When an
+issue ID is provided, filters to activity related to that issue only.
+Use --limit to cap the number of results returned.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

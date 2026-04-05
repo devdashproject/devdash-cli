@@ -14,6 +14,12 @@ func newBlockedCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "blocked",
 		Short: "Pending issues with unsatisfied dependencies",
+		Long: `Show pending issues that are waiting on unfinished dependencies.
+
+An issue is considered blocked when it has at least one dependency that
+has not yet been completed. Results are sorted by priority. Use this to
+identify bottlenecks — the dependencies shown are what need to be
+completed before these issues can move forward.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

@@ -21,6 +21,14 @@ func newSelfUpdateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "self-update",
 		Short: "Update devdash to the latest version",
+		Long: `Update devdash to the latest version by auto-detecting the installation method.
+
+If installed via npm, runs npm update. If running from a git clone, pulls the
+latest changes and rebuilds with go build. Otherwise, downloads the latest
+GitHub release archive (tar.gz on Unix, zip on Windows) and replaces the
+current binary.
+
+Use this instead of manually downloading releases or pulling updates.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			exe, err := os.Executable()
 			if err != nil {
@@ -122,6 +130,14 @@ func newUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Short: "Remove devdash and its configuration",
+		Long: `Remove the devdash binary and its configuration directory (~/.config/dev-dash).
+
+Use --dry-run to preview exactly which paths will be deleted without actually
+removing anything. Use --force to skip the confirmation prompt.
+
+After removal, the command suggests cleaning up any shell aliases (e.g. the
+"dd" alias added by alias-setup) since those live in your RC file and are
+not removed automatically.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			exe, _ := os.Executable()
@@ -157,6 +173,15 @@ func newAliasSetupCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "alias-setup",
 		Short: "Add 'dd' alias to your shell RC file",
+		Long: `Add a "dd" shell alias for devdash to your shell configuration file.
+
+Detects your current shell (zsh, bash, or fish) and appends the
+appropriate alias syntax to the matching RC file (~/.zshrc, ~/.bashrc,
+or ~/.config/fish/config.fish). If the alias already exists in the
+file, the command exits without making changes.
+
+After writing the alias, it prints a source command you can run to
+activate it in your current session.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			home, _ := os.UserHomeDir()
 			shell := os.Getenv("SHELL")

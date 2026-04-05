@@ -14,6 +14,15 @@ func newReadyCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ready",
 		Short: "Pending, unblocked issues sorted by priority",
+		Long: `Show pending, unblocked issues sorted by automability score then priority.
+
+This is the "what should I work on next?" command. It filters out completed,
+in-progress, and blocked issues, as well as "thought" type beads, leaving
+only actionable work. Results are ranked so the most automatable, highest
+priority issues appear first.
+
+Use --since to narrow results to issues created within a time window
+(e.g. --since=7d, --since=2h, or --since=2025-01-01).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

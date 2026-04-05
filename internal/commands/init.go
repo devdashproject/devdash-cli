@@ -17,6 +17,14 @@ func newInitCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize devdash in the current repository",
+		Long: `Initialize devdash in the current Git repository.
+
+Detects the GitHub remote from git config and attempts to match it against
+your existing devdash projects. If a match is found, it links automatically;
+otherwise you are prompted to select an existing project or create a new one.
+
+Writes a .devdash configuration file in the repository root. If .devdash
+already exists, the command exits early without overwriting it.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
 				return err

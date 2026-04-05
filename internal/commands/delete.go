@@ -12,6 +12,13 @@ func newDeleteCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <id> [<id>...]",
 		Short: "Delete one or more issues",
+		Long: `Permanently delete one or more issues.
+
+Accepts one or multiple issue IDs. Use --cascade to also delete all
+child issues. Use --force to skip the confirmation prompt.
+
+This action is irreversible. If you want to preserve history, consider
+closing the issue instead.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

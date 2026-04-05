@@ -16,6 +16,15 @@ func newLoginCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Authenticate with DevDash",
+		Long: `Authenticate with DevDash using an OAuth browser flow.
+
+Starts a local HTTP callback server, generates a one-time nonce, and opens
+your default browser to the DevDash auth page. Once you approve access the
+token is saved to the CLI config file automatically.
+
+Pass --no-browser to print the auth URL instead of launching a browser
+(useful for SSH sessions or headless environments). The command will wait
+up to 120 seconds for the browser callback before timing out.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if d.Cfg == nil {
 				var err error

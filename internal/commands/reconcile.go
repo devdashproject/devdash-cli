@@ -19,6 +19,14 @@ func newReconcileCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reconcile-tasks",
 		Short: "Audit and fix backlog inconsistencies",
+		Long: `Audit the project backlog for inconsistencies such as orphaned
+dependencies, status mismatches, and unreachable beads.
+
+By default the command runs in --dry-run mode, listing what it found
+without changing anything. Pass --auto-fix to apply corrections.
+Use --json to get the raw findings as JSON.
+
+Findings are grouped by type and include severity and related bead IDs.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

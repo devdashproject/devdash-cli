@@ -19,6 +19,12 @@ func newDepCmd(d *Deps) *cobra.Command {
 	depCmd := &cobra.Command{
 		Use:   "dep",
 		Short: "Manage dependencies between issues",
+		Long: `Manage dependencies between issues.
+
+Use "dep add" to declare that one issue is blocked until another
+completes, and "dep remove" to clear that relationship. Blocked
+issues appear in "devdash blocked" and are excluded from
+"devdash ready".`,
 	}
 
 	depCmd.AddCommand(&cobra.Command{

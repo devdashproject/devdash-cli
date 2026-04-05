@@ -9,7 +9,17 @@ import (
 )
 
 func newProjectCmd(d *Deps) *cobra.Command {
-	projectCmd := &cobra.Command{Use: "project", Short: "Manage projects"}
+	projectCmd := &cobra.Command{
+		Use:   "project",
+		Short: "Manage projects",
+		Long: `Parent command for managing DevDash projects.
+
+Subcommands let you create new projects (with --name, --repo, and
+--description flags), list all projects you have access to, or delete
+a project by ID. Every other devdash command operates within the scope
+of a single project, so use this command group to set up and organize
+your workspace.`,
+	}
 
 	createCmd := &cobra.Command{
 		Use: "create", Short: "Create a new project",

@@ -12,6 +12,14 @@ func newReportCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "report <id>",
 		Short: "Report progress on an issue",
+		Long: `Report progress on an issue at key milestones during development.
+
+Requires --status set to one of: code_complete, committed, pushed, or
+error. Optionally attach context with --summary, --files-changed,
+--branch, --commit, or --error.
+
+Use this command to keep the issue's activity trail up to date so that
+future readers can follow what happened and when.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

@@ -13,6 +13,14 @@ func newStaleCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stale",
 		Short: "In-progress issues with no recent activity",
+		Long: `List in-progress issues that have had no recent activity.
+
+An issue is considered stale when its StaleMinutes value is greater than
+zero, meaning it has exceeded the project's configured staleness threshold.
+Results can be filtered by --since to restrict by updatedAt timestamp
+(accepts Nh, Nd, Nw, or YYYY-MM-DD formats).
+
+Use this to find forgotten work that may need attention or reassignment.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

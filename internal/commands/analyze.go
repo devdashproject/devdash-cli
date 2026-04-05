@@ -14,6 +14,11 @@ func newAnalyzeCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "analyze <id>",
 		Short: "Trigger sandbox analysis for an issue",
+		Long: `Trigger a sandbox analysis job for an issue.
+
+Queues the issue for automated analysis and prints the resulting job ID
+to stdout (useful for scripting). The job runs asynchronously — check
+its status with "devdash jobs show <job-id>".`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

@@ -14,6 +14,14 @@ func newCreateCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new issue",
+		Long: `Create a new issue in the current project.
+
+Requires --title. Optionally set the type (task, bug, feature,
+enhancement, thought), priority (0=critical through 4=backlog),
+description, parent issue, due date, and time estimate.
+
+The new issue is created in "pending" status. Use "devdash update"
+to mark it in_progress when you begin work.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			title, _ := cmd.Flags().GetString("title")
 			if title == "" {

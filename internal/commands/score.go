@@ -19,6 +19,15 @@ func newScoreCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "score [<id>]",
 		Short: "Score beads for automability",
+		Long: `Score beads to evaluate how suitable they are for automation.
+
+Without an ID, scores every bead in the current project and prints a
+table with the automability grade, automability score, and complexity
+for each. With an ID, scores a single bead and returns the full JSON
+detail including the breakdown factors.
+
+Useful for triaging a backlog to find the best candidates for
+automated execution.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

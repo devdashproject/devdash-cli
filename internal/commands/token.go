@@ -8,7 +8,18 @@ import (
 )
 
 func newTokenCmd(d *Deps) *cobra.Command {
-	tokenCmd := &cobra.Command{Use: "token", Short: "Manage API tokens"}
+	tokenCmd := &cobra.Command{
+		Use:   "token",
+		Short: "Manage API tokens",
+		Long: `Manage API tokens for authenticating with the devdash API.
+
+Subcommands let you create, list, and revoke tokens. Use "token create <name>"
+to generate a new named token, "token list" to show all active tokens, and
+"token revoke <id>" to revoke one by its ID.
+
+Tokens are scoped to your user account and grant the same access as your
+session. Treat them like passwords.`,
+	}
 
 	tokenCmd.AddCommand(&cobra.Command{
 		Use: "create <name>", Short: "Create a new API token", Args: cobra.ExactArgs(1),

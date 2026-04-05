@@ -13,6 +13,14 @@ func newDispatchCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dispatch <id>",
 		Short: "Dispatch a bead for execution",
+		Long: `Queue a bead for execution as a job.
+
+The prompt sent to the worker is chosen from the first non-empty field in this
+order: PreInstructions, Description, Subject. Use --priority (0-4) to control
+scheduling urgency and --worker to select an execution environment
+(docker, e2b, or railway).
+
+Returns the created job ID on success.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

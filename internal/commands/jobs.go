@@ -14,6 +14,14 @@ func newJobsCmd(d *Deps) *cobra.Command {
 	jobsCmd := &cobra.Command{
 		Use:   "jobs",
 		Short: "List recent jobs",
+		Long: `List recent jobs for the current project, optionally filtered by bead.
+
+By default, prints one summary line per job showing its ID, status, bead,
+and creation time. Pass --bead to narrow results to a single issue.
+
+Subcommands provide deeper inspection: "jobs show" dumps full JSON detail
+for a single job, "jobs log" streams the output log (with optional --tail),
+and "jobs failures" lists the last 10 failed jobs with optional --bead filter.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

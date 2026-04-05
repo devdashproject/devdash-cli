@@ -14,6 +14,14 @@ func newListCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List issues",
+		Long: `List all issues for the current project, sorted by priority.
+
+Results can be narrowed with --status (pending, in_progress, completed),
+--since (accepts relative durations like 2h, 3d, 1w or an absolute
+YYYY-MM-DD date filtering on updatedAt), and --parent (show only children
+of a specific bead ID).
+
+When no issues match the filters, a message is printed to stderr.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

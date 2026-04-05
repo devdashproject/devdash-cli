@@ -12,6 +12,14 @@ func newUpdateCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update an issue",
+		Long: `Update one or more fields on an existing issue in a single call.
+
+Supported flags: --status, --title, --description, --priority, --owner,
+--parent, --pre-instructions, --due, and --estimate. At least one flag
+must be provided or the command returns an error.
+
+The <id> argument accepts full UUIDs or short prefixes that uniquely
+identify an issue within the current project.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)

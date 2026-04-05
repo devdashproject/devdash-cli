@@ -14,6 +14,14 @@ func newDoctorCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
 		Short: "Check configuration and connectivity",
+		Long: `Run a series of health checks on your devdash setup.
+
+Verifies the config file, auth token, project configuration, .devdash file
+presence, git availability, and API connectivity. Each check prints a pass,
+fail, or informational marker so you can quickly spot what needs attention.
+
+Run this first when something isn't working — it covers the most common
+configuration and environment issues in one shot.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("devdash %s\n\n", Version)
 

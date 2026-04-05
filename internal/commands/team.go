@@ -12,6 +12,14 @@ func newTeamCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "team",
 		Short: "List project team members",
+		Long: `List project team members (up to 20).
+
+For each active member, prints their display name, @username, email
+address, and role. Pending invitations are shown separately with just
+the email and a "pending" label.
+
+Useful when you need to find a teammate's email for --owner assignment
+or want to confirm who has access to the project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

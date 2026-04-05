@@ -12,6 +12,15 @@ func newStatsCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "stats",
 		Short: "Project health: open/closed/blocked counts",
+		Long: `Show project health metrics at a glance.
+
+Prints total issue count along with breakdowns by status: pending,
+in_progress, completed, blocked, and ready. "Blocked" counts issues
+whose dependencies have not yet completed; "ready" counts pending
+issues that are unblocked and available to work on.
+
+Use this as a quick pulse-check on overall project state without
+having to list and scan individual issues.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

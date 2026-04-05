@@ -12,6 +12,16 @@ func newAgentSetupCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent-setup",
 		Short: "Configure agent instructions for this repository",
+		Long: `Configure AI agent instruction files for the current repository so that
+agents automatically follow the devdash workflow.
+
+By default the command auto-detects which agents are present (looking for
+CLAUDE.md, AGENTS.md, .github/copilot-instructions.md) and writes devdash
+instructions into each. Use --agent to target specific agents by name, and
+--force to overwrite configs that already contain devdash instructions.
+
+The --close-on flag controls the workflow gate: set it to "commit" or "push"
+to determine when agents are allowed to close issues.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

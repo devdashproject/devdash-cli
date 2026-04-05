@@ -13,6 +13,15 @@ func newPrimeCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "prime",
 		Short: "Output AI-optimized workflow context for agent injection",
+		Long: `Output a full AI-optimized workflow context block designed for agent injection.
+
+The output includes the current project info, team roster, all known projects,
+health stats (open/in-progress/blocked counts), mandatory rules, a quick
+reference for common workflows, and on-demand help topics.
+
+Run this at the start of every new session, after context compaction, or
+whenever the agent has lost track of project state. The output is formatted
+as Markdown so it can be injected directly into an agent's context window.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
