@@ -137,6 +137,12 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("- One issue per commit. Scope creep = new issue. Multi-step = parent + children.")
 			fmt.Println()
 
+			fmt.Println("## Output Formats")
+			fmt.Println("- There is no `--json` flag. Do not try `--json`, `--format`, or `--output`.")
+			fmt.Println("- These commands already return JSON: `show`, `find`, `activity`, `comments`, `jobs show`, `score <id>`, `token list`, `sync`")
+			fmt.Println("- All other commands return human-readable text. Parse UUIDs from `create`/`close`/`update` output directly.")
+			fmt.Println()
+
 			fmt.Println("## On-Demand Reference")
 			fmt.Println("Run these when you need detailed guidance:")
 			fmt.Println("- `devdash help cli` — Full command reference (flags, ID formats, --since syntax)")
