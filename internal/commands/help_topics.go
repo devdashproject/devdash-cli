@@ -35,7 +35,7 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 var helpTopics = map[string]string{
 	"cli": `# DevDash CLI Reference
 
-## Commands
+## Issue Tracking (Core)
   ready [--since=X]                    Pending + unblocked issues sorted by priority. Excludes thoughts. Use this when you need to choose what to work on next.
   list [--status=X] [--since=X]       All issues, optionally filtered
   blocked                              Pending issues with unsatisfied dependencies
@@ -48,7 +48,6 @@ var helpTopics = map[string]string{
   update <id> [flags]                  Update an issue
   close <id> [<id>...] [flags]        Close one or more issues
   delete <id> [--force] [--cascade]   Delete issues
-  report <id> --status=X [flags]      Report agent progress
 
   dep add <issue> <depends-on>         Add a dependency
   dep remove <issue> <depends-on>      Remove a dependency
@@ -56,12 +55,44 @@ var helpTopics = map[string]string{
   comments <id>                        List comments
   activity [<id>]                      View activity log
 
+  team                                 List team members
+  prime                                Output agent workflow context
+  report <id> --status=X [flags]      Report agent progress (optional, see: help report)
+
+## Setup & Utility
   login [--no-browser]                 Authenticate
   init                                 Initialize project in current repo
   doctor                               Check configuration
-  team                                 List team members
-  prime                                Output agent workflow context
   version                              Print version
+  self-update                          Update devdash to the latest version
+  uninstall [--dry-run]               Remove devdash and its configuration
+  agent-setup [--agent=X] [--force]   Configure agent instructions for this repo
+  alias-setup                          Add 'dd' alias to your shell RC file
+
+## Project Management
+  project create --name="..." [flags] Create a new project (--repo, --description)
+  project list                         List all projects
+  project delete <project-id>         Delete a project
+
+## Token Management
+  token create <name>                  Create a new API token
+  token list                           List API tokens
+  token revoke <id>                    Revoke an API token
+
+## Execution & Automation (paid plan)
+  dispatch <id> [--priority] [--worker]   Queue an issue for execution as a job
+  jobs [--bead=X]                         List recent jobs
+  jobs show <id>                          Job details (JSON)
+  jobs log <id> [--tail=N]               Job output log
+  jobs failures [--bead=X]               Recent failed jobs
+  analyze <id>                            Trigger sandbox analysis for an issue
+  diagnose <id>                           Investigate: status, job history, failures
+  score [<id>]                            Score beads for automability
+  reconcile-tasks [--auto-fix] [--json]  Audit and fix backlog inconsistencies
+
+## Integration (WIP — being reworked)
+  sync                                 Trigger full GitHub reconciliation
+  import <issue-number> | --all       Import GitHub issues (--state=open|all)
 
 ## ID Formats
   Full UUID:    27bf66bd-945f-4714-93fd-0c3322b720f4
@@ -91,7 +122,7 @@ var helpTopics = map[string]string{
   # Create a child issue under a parent
   devdash create --title="Fix API validation" --parent=abc123
 
-  # Report progress (fire-and-forget, won't fail your workflow)
+  # Report progress (optional — for monitored workflows)
   devdash report abc123 --status=code_complete --summary="Tests passing"`,
 
 	"workflow": `# DevDash Workflow Guide
@@ -176,11 +207,22 @@ read them to understand what happened.
 
   The server verifies you have access to both projects.`,
 
-	"report": `# Progress Reporting
+	"report": `# Progress Reporting (Optional)
 
-## Why Report
-  Reporting prevents issues from appearing stale (30+ min without activity).
-  It's fire-and-forget — if it fails, nothing breaks.
+The report command is NOT part of the default workflow. The core workflow is:
+  create → update --status=in_progress → [work] → close
+
+Report exists for clients that want granular, real-time progress tracking —
+dashboards, CI bots, multi-agent orchestrators, or any system polling for
+intermediate status between "in progress" and "closed".
+
+## When to Use Report
+  - A monitoring dashboard is watching issue progress
+  - Multiple agents coordinate and need to signal milestones to each other
+  - Long-running tasks where a human or system needs visibility before completion
+  - Error reporting when work is abandoned mid-task
+
+  If none of these apply, you don't need report. Just close the issue when done.
 
 ## Status Values
   code_complete   Code written, ready for commit
@@ -188,13 +230,17 @@ read them to understand what happened.
   pushed          Pushed to remote
   error           Something went wrong
 
-## When to Report
-  After completing code: devdash report <id> --status=code_complete --summary="..."
-  After commit:          devdash report <id> --status=committed --commit=$(git rev-parse HEAD)
-  After push:            devdash report <id> --status=pushed --branch=$(git branch --show-current)
-  On error:              devdash report <id> --status=error --error="description"
+## Usage
+  devdash report <id> --status=code_complete --summary="..."
+  devdash report <id> --status=committed --commit=$(git rev-parse HEAD)
+  devdash report <id> --status=pushed --branch=$(git branch --show-current)
+  devdash report <id> --status=error --error="description"
 
-## Always Report Before Exiting
-  Even if the work is incomplete, report the current status so the issue
-  doesn't appear abandoned.`,
+  Report is fire-and-forget — if it fails, nothing breaks.
+
+## For Client Developers
+  Report statuses are available in the API for any client to consume.
+  Clients that want agents to report should include reporting instructions
+  in their agent context (e.g., via prime output or custom agent prompts).
+  The default prime output does not include reporting instructions.`,
 }

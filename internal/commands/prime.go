@@ -132,14 +132,13 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("- **Start (task already named)**: `devdash show <id>` → `devdash update <id> --status=in_progress`")
 			fmt.Println("- **Start (need a task)**: `devdash ready` → `devdash show <id>` → `devdash update <id> --status=in_progress`")
 			fmt.Println("- **Complete**: git add → commit → push → `devdash close <id> --summary=\"...\" --commit=$(git rev-parse HEAD)`")
-			fmt.Println("- **Report**: `devdash report <id> --status=code_complete|committed|pushed|error --summary=\"...\"`")
 			fmt.Println("- Close summaries are institutional memory — include what, why, decisions, surprises, follow-ups.")
 			fmt.Println("- One issue per commit. Scope creep = new issue. Multi-step = parent + children.")
 			fmt.Println()
 
 			fmt.Println("## Output Formats")
 			fmt.Println("- There is no `--json` flag. Do not try `--json`, `--format`, or `--output`.")
-			fmt.Println("- These commands already return JSON: `show`, `find`, `activity`, `comments`, `jobs show`, `score <id>`, `token list`, `sync`")
+			fmt.Println("- These commands already return JSON: `show`, `find`, `activity`, `comments`, `token list`")
 			fmt.Println("- All other commands return human-readable text. Parse UUIDs from `create`/`close`/`update` output directly.")
 			fmt.Println()
 
@@ -150,7 +149,6 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("- `devdash help close` — Close summary expectations with examples")
 			fmt.Println("- `devdash help pr` — PR footer format and multi-issue PRs")
 			fmt.Println("- `devdash help projects` — Cross-project dependencies and multi-repo work")
-			fmt.Println("- `devdash help report` — Progress reporting cadence and status values")
 
 			return nil
 		},
