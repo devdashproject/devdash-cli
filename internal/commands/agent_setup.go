@@ -90,35 +90,29 @@ func setupAgent(agent, pid, closeOn string, force bool) error {
 	}
 }
 
-func setupClaude(pid, closeOn string, force bool) error {
-	target := "CLAUDE.md"
-	if !force {
-		if _, err := os.Stat(target); err == nil {
-			data, _ := os.ReadFile(target)
-			if strings.Contains(string(data), "devdash") {
-				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
-				return nil
-			}
-		}
+// agentConfig holds per-agent customization for the shared instruction template.
+type agentConfig struct {
+	// Preamble is agent-specific text inserted before the shared core
+	// (e.g., tool disambiguation, naming conventions).
+	Preamble string
+	// Postamble is agent-specific text appended after the shared core
+	// (e.g., agent-specific behavioral tips).
+	Postamble string
+}
+
+// buildInstructions generates the shared devdash agent instructions,
+// sandwiching agent-specific content around the universal core.
+func buildInstructions(pid, closeOn string, cfg agentConfig) string {
+	var b strings.Builder
+
+	// Agent-specific preamble
+	if cfg.Preamble != "" {
+		b.WriteString(cfg.Preamble)
+		b.WriteString("\n")
 	}
 
-	instructions := fmt.Sprintf(`<!-- devdash:agent-instructions -->
-
-# DevDash — AI Agent Task Tracking
-
-This project uses **devdash** (`+"`dd`"+`) for task tracking. DevDash is a shared memory
-between you and the user — a place where ideas, decisions, and progress are captured so
-nothing gets lost.
-
-Run devdash commands yourself via the terminal — do not just tell the user to run them.
-Do NOT use TodoWrite, TaskCreate, `+"`bd`"+`, or markdown files for tracking. When the user
-says "dd", they mean the devdash CLI, not the Unix `+"`dd`"+` data-copy utility.
-
-Issues are called "beads" internally. You'll see this in fields like `+"`parentBeadId`"+`.
-
-Project ID: %s
-
-## Core Principles
+	// --- Shared core (identical across all agents) ---
+	fmt.Fprintf(&b, `## Core Principles
 
 **Be a capture reflex.**
 When the user mentions a bug, idea, TODO, or "we should probably..." — offer to create
@@ -160,15 +154,59 @@ Run these when you need detailed guidance:
 - `+"`devdash help close`"+` — Close summary expectations with examples
 - `+"`devdash help pr`"+` — PR footer format and multi-issue PRs
 - `+"`devdash help projects`"+` — Cross-project dependencies and multi-repo work
+`, closeOn, closeOn, closeOn)
 
-## Agent-Specific Instructions
+	// Agent-specific postamble
+	if cfg.Postamble != "" {
+		b.WriteString("\n")
+		b.WriteString(cfg.Postamble)
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+func setupClaude(pid, closeOn string, force bool) error {
+	target := "CLAUDE.md"
+	if !force {
+		if _, err := os.Stat(target); err == nil {
+			data, _ := os.ReadFile(target)
+			if strings.Contains(string(data), "devdash") {
+				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
+				return nil
+			}
+		}
+	}
+
+	preamble := fmt.Sprintf(`<!-- devdash:agent-instructions -->
+
+# DevDash — AI Agent Task Tracking
+
+This project uses **devdash** (`+"`dd`"+`) for task tracking. DevDash is a shared memory
+between you and the user — a place where ideas, decisions, and progress are captured so
+nothing gets lost.
+
+Run devdash commands yourself via the terminal — do not just tell the user to run them.
+Do NOT use TodoWrite, TaskCreate, `+"`bd`"+`, or markdown files for tracking. When the user
+says "dd", they mean the devdash CLI, not the Unix `+"`dd`"+` data-copy utility.
+
+Issues are called "beads" internally. You'll see this in fields like `+"`parentBeadId`"+`.
+
+Project ID: %s
+`, pid)
+
+	postamble := `## Agent-Specific Instructions
 
 - You may use your built-in task tools (TaskCreate, TodoWrite, etc.) for your own tracking, but you **must also** create and update devdash issues. Devdash is the system of record.
-- When the user asks you to implement a plan, feature, or fix: your **very first action** is `+"`devdash create`"+`. Do not read files, do not write code — create the issue first.
+- When the user asks you to implement a plan, feature, or fix: your **very first action** is ` + "`devdash create`" + `. Do not read files, do not write code — create the issue first.
 - For multi-step plans, create one devdash issue per step before starting any implementation. Group them under a parent issue. Then work through them sequentially: mark in-progress, implement, commit, close, move to next.
 - After creating issues, follow the normal workflow: mark in-progress, do the work, commit, then close.
-<!-- /devdash:agent-instructions -->
-`, pid, closeOn, closeOn, closeOn)
+<!-- /devdash:agent-instructions -->`
+
+	instructions := buildInstructions(pid, closeOn, agentConfig{
+		Preamble:  preamble,
+		Postamble: postamble,
+	})
 
 	var content []byte
 	if existing, err := os.ReadFile(target); err == nil && !force {
@@ -196,27 +234,32 @@ func setupCodex(pid, closeOn string, force bool) error {
 		}
 	}
 
-	instructions := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
+	preamble := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
 
-This project uses **devdash** for task tracking. Project ID: %s
+This project uses **devdash** for task tracking. DevDash is a shared memory
+between you and the user — a place where ideas, decisions, and progress are captured so
+nothing gets lost.
 
-## Agent-Specific Instructions
+Run devdash commands yourself in the terminal; do not ask the user to run them for you.
+Do NOT use markdown files or other tools for task tracking.
 
-- Run `+"`devdash prime`"+` at the start of every new session. Run it again after any handoff, compaction, or context-loss event.
-- If the user already named a specific devdash issue, follow `+"`devdash prime`"+` with `+"`devdash show <id>`"+` and `+"`devdash update <id> --status=in_progress`"+` instead of `+"`devdash ready`"+`.
-- Use `+"`devdash ready`"+` only when the user has not already chosen the task.
-- For command discovery, prefer `+"`devdash help`"+` and topic help commands such as `+"`devdash help cli`"+` before probing subcommands with `+"`--help`"+`.
-- Use `+"`devdash --help`"+` when you need command syntax, capabilities, or supported workflow and a topic help entry is not enough.
-- Minimize redundant startup work after `+"`devdash prime`"+`. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
+Issues are called "beads" internally. You'll see this in fields like `+"`parentBeadId`"+`.
+
+Project ID: %s
+`, pid)
+
+	postamble := `## Agent-Specific Instructions
+
+- Run ` + "`devdash prime`" + ` at the start of every new session. Run it again after any handoff, compaction, or context-loss event.
+- Minimize redundant startup work after ` + "`devdash prime`" + `. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
 - Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
-- Avoid commands whose only purpose is to reconfirm information already present in the prompt, local instructions, or recent command output.
-- Run devdash commands yourself in the terminal; do not ask the user to run them for you.
-- Before making code changes, make sure a devdash issue exists and is marked `+"`in_progress`"+`.
-- Before each commit, confirm that the commit maps to exactly one devdash issue.
-- Never close a devdash issue until `+"`git %s`"+` succeeds.
 - Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
-- Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.
-`, pid, closeOn)
+- Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.`
+
+	instructions := buildInstructions(pid, closeOn, agentConfig{
+		Preamble:  preamble,
+		Postamble: postamble,
+	})
 
 	var content []byte
 	if existing, err := os.ReadFile(target); err == nil && !force {
@@ -244,7 +287,7 @@ func setupCopilot(pid, closeOn string, force bool) error {
 		}
 	}
 
-	instructions := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
+	preamble := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
 
 This project uses **devdash** for task tracking. DevDash is a shared memory
 between you and the user — a place where ideas, decisions, and progress are captured so
@@ -257,50 +300,11 @@ says "dd", they mean the devdash CLI, not the Unix `+"`dd`"+` data-copy utility.
 Issues are called "beads" internally. You'll see this in fields like `+"`parentBeadId`"+`.
 
 Project ID: %s
+`, pid)
 
-## Core Principles
-
-**Be a capture reflex.**
-When the user mentions a bug, idea, TODO, or "we should probably..." — offer to create
-an issue. Don't wait to be asked.
-
-**Issue-first.**
-Create an issue before doing work. Your first action when asked to implement something
-should be `+"`devdash create`"+`.
-
-**One issue per logical unit of work.**
-If a task has multiple steps, create a parent issue and child issues. Scope creep during
-a task = new issue, not an expanded current one. Every git commit must map to a devdash
-issue.
-
-## Rules
-
-1. Create an issue before starting work. No exceptions.
-2. `+"`devdash update <id> --status=in_progress`"+` before starting work on an issue.
-3. Close with a substantive summary — write it for a future reader with zero context.
-4. Don't batch unrelated work into a single issue.
-5. **Close after %s**: Only close issues after `+"`git %s`"+` succeeds — never before.
-6. No orphaned work: at session end, every commit must map to a closed issue.
-7. Git operations MUST succeed before closing. Never run git and devdash close in parallel.
-8. Preserve stderr: avoid `+"`2>/dev/null`"+` on devdash commands.
-
-## Completing Work
-
-`+"`git add`"+` → `+"`git commit`"+` → `+"`git %s`"+` → `+"`devdash close <id>`"+`
-On successful completions: `+"`devdash close <id> --summary=\"...\" --commit=$(git rev-parse HEAD)`"+`.
-If a PR exists, include `+"`--pr=URL`"+` too.
-Close summaries are institutional memory — include what, why, decisions, surprises, follow-ups.
-One issue per commit. Scope creep = new issue. Multi-step = parent + children.
-
-## On-Demand Reference
-
-Run these when you need detailed guidance:
-- `+"`devdash help cli`"+` — Full command reference (flags, ID formats, --since syntax)
-- `+"`devdash help workflow`"+` — When to create issues, decomposition patterns, bead relationships
-- `+"`devdash help close`"+` — Close summary expectations with examples
-- `+"`devdash help pr`"+` — PR footer format and multi-issue PRs
-- `+"`devdash help projects`"+` — Cross-project dependencies and multi-repo work
-`, pid, closeOn, closeOn, closeOn)
+	instructions := buildInstructions(pid, closeOn, agentConfig{
+		Preamble: preamble,
+	})
 
 	if err := os.MkdirAll(".github", 0755); err != nil {
 		return err
