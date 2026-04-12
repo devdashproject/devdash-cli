@@ -38,12 +38,22 @@ func newTestEnv(t *testing.T, beads []apiPkg.Bead) func(args ...string) (string,
 		rootCmd := NewRootCmd(deps)
 		rootCmd.SetArgs(args)
 
-		// Capture stdout
+		// Capture stdout/stderr via pipes.
+		// Drain concurrently to avoid deadlock when output exceeds
+		// the OS pipe buffer (small on Windows, ~4KB).
 		oldStdout, oldStderr := os.Stdout, os.Stderr
 		rOut, wOut, _ := os.Pipe()
 		rErr, wErr, _ := os.Pipe()
 		os.Stdout = wOut
 		os.Stderr = wErr
+
+		var capturedOut, capturedErr bytes.Buffer
+		done := make(chan struct{})
+		go func() {
+			capturedOut.ReadFrom(rOut)
+			capturedErr.ReadFrom(rErr)
+			close(done)
+		}()
 
 		err := rootCmd.Execute()
 
@@ -52,9 +62,7 @@ func newTestEnv(t *testing.T, beads []apiPkg.Bead) func(args ...string) (string,
 		os.Stdout = oldStdout
 		os.Stderr = oldStderr
 
-		var capturedOut, capturedErr bytes.Buffer
-		capturedOut.ReadFrom(rOut)
-		capturedErr.ReadFrom(rErr)
+		<-done
 
 		return capturedOut.String() + capturedErr.String(), err
 	}
