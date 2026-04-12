@@ -159,7 +159,6 @@ This project uses **devdash** for task tracking. Project ID: %s
 - Run devdash commands yourself in the terminal; do not ask the user to run them for you.
 - Before making code changes, make sure a devdash issue exists and is marked `+"`in_progress`"+`.
 - Before each commit, confirm that the commit maps to exactly one devdash issue.
-- Report progress with `+"`devdash report`"+` at `+"`code_complete`"+`, `+"`committed`"+`, and `+"`pushed`"+`.
 - Never close a devdash issue until `+"`git %s`"+` succeeds.
 - Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
 - Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.
