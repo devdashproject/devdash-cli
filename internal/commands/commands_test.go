@@ -580,17 +580,20 @@ func TestHelpTopicWorkflow(t *testing.T) {
 	}
 }
 
-func TestPrimeCommandDualStartup(t *testing.T) {
+func TestPrimeCommandSessionContext(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("prime")
 	if err != nil {
 		t.Fatalf("prime failed: %v", err)
 	}
-	if !strings.Contains(out, "Start (task already named)") {
-		t.Errorf("should contain 'Start (task already named)', got: %s", out)
+	if !strings.Contains(out, "Health") {
+		t.Errorf("should contain project health stats, got: %s", out)
 	}
-	if !strings.Contains(out, "Start (need a task)") {
-		t.Errorf("should contain 'Start (need a task)', got: %s", out)
+	if !strings.Contains(out, "Output Formats") {
+		t.Errorf("should contain output format guidance, got: %s", out)
+	}
+	if strings.Contains(out, "Rules (MANDATORY)") {
+		t.Errorf("should NOT contain workflow rules (moved to static instructions), got: %s", out)
 	}
 }
 

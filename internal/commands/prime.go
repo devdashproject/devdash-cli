@@ -63,7 +63,6 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("# Dev-Dash Workflow Context")
 			fmt.Println()
 			fmt.Println("> **Context Recovery**: Run `devdash prime` after compaction, clear, or new session.")
-			fmt.Println("> Use `devdash` (dev-dash CLI) for ALL task tracking — never `bd`.")
 			fmt.Println()
 
 			repo := ""
@@ -115,25 +114,8 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("Short prefixes work for project IDs too: `DD_PROJECT_ID=47eb046a devdash ready`")
 			fmt.Println()
 
-			fmt.Println("## Rules (MANDATORY)")
-			fmt.Println("- **Issue-first**: Create a devdash issue BEFORE writing code. No exceptions.")
-			fmt.Println("- **Issue-per-commit**: Every git commit must map to a devdash issue. If scope expands, create new issues.")
-			fmt.Println("- **Mark in-progress**: `devdash update <id> --status=in_progress` before starting work.")
-			fmt.Println("- **Pre-commit checkpoint**: Before each `git commit`, verify you have an issue. If not, create one.")
-			fmt.Println("- **Close after push**: Only close issues after `git push` succeeds — never before.")
-			fmt.Println("- **No orphaned work**: At session end, every commit must map to a closed issue.")
 			exe, _ := os.Executable()
-			fmt.Printf("- **Path**: `%s`\n", exe)
-			fmt.Println("- **Preserve stderr**: Avoid `2>/dev/null` on devdash commands — stderr contains error details you'll need for debugging failures.")
-			fmt.Println("- **Prohibited**: Do NOT use `bd`, TodoWrite, TaskCreate, or markdown files for task tracking")
-			fmt.Println()
-
-			fmt.Println("## Quick Reference")
-			fmt.Println("- **Start (task already named)**: `devdash show <id>` → `devdash update <id> --status=in_progress`")
-			fmt.Println("- **Start (need a task)**: `devdash ready` → `devdash show <id>` → `devdash update <id> --status=in_progress`")
-			fmt.Println("- **Complete**: git add → commit → push → `devdash close <id> --summary=\"...\" --commit=$(git rev-parse HEAD)`")
-			fmt.Println("- Close summaries are institutional memory — include what, why, decisions, surprises, follow-ups.")
-			fmt.Println("- One issue per commit. Scope creep = new issue. Multi-step = parent + children.")
+			fmt.Printf("**CLI Path**: `%s`\n", exe)
 			fmt.Println()
 
 			fmt.Println("## Output Formats")
