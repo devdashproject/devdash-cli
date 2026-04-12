@@ -154,6 +154,12 @@ Run these when you need detailed guidance:
 - `+"`devdash help close`"+` — Close summary expectations with examples
 - `+"`devdash help pr`"+` — PR footer format and multi-issue PRs
 - `+"`devdash help projects`"+` — Cross-project dependencies and multi-repo work
+
+## Session Startup
+
+Run `+"`devdash prime`"+` at the start of every new session and after any context loss
+(compaction, clear, handoff). It provides dynamic project context — team, health
+stats, and output format guidance — that these static instructions cannot.
 `, closeOn, closeOn, closeOn)
 
 	// Agent-specific postamble
@@ -250,7 +256,6 @@ Project ID: %s
 
 	postamble := `## Agent-Specific Instructions
 
-- Run ` + "`devdash prime`" + ` at the start of every new session. Run it again after any handoff, compaction, or context-loss event.
 - Minimize redundant startup work after ` + "`devdash prime`" + `. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
 - Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
 - Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
