@@ -580,17 +580,20 @@ func TestHelpTopicWorkflow(t *testing.T) {
 	}
 }
 
-func TestPrimeCommandDualStartup(t *testing.T) {
+func TestPrimeCommandSessionContext(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("prime")
 	if err != nil {
 		t.Fatalf("prime failed: %v", err)
 	}
-	if !strings.Contains(out, "Start (task already named)") {
-		t.Errorf("should contain 'Start (task already named)', got: %s", out)
+	if !strings.Contains(out, "Health") {
+		t.Errorf("should contain project health stats, got: %s", out)
 	}
-	if !strings.Contains(out, "Start (need a task)") {
-		t.Errorf("should contain 'Start (need a task)', got: %s", out)
+	if !strings.Contains(out, "Output Formats") {
+		t.Errorf("should contain output format guidance, got: %s", out)
+	}
+	if strings.Contains(out, "Rules (MANDATORY)") {
+		t.Errorf("should NOT contain workflow rules (moved to static instructions), got: %s", out)
 	}
 }
 
@@ -655,6 +658,164 @@ func TestAgentSetupCodexNoOverwrite(t *testing.T) {
 	data, _ := os.ReadFile("AGENTS.md")
 	if !strings.HasPrefix(string(data), "# Existing") {
 		t.Errorf("should preserve existing content, got: %s", string(data))
+	}
+}
+
+func TestBuildInstructionsSharedCore(t *testing.T) {
+	out := buildInstructions("test-pid", "push", agentConfig{})
+
+	// Core principles
+	if !strings.Contains(out, "Be a capture reflex") {
+		t.Error("shared core should contain capture reflex principle")
+	}
+	if !strings.Contains(out, "Issue-first") {
+		t.Error("shared core should contain issue-first principle")
+	}
+	if !strings.Contains(out, "One issue per logical unit") {
+		t.Error("shared core should contain one-issue-per-unit principle")
+	}
+
+	// Rules
+	if !strings.Contains(out, "Create an issue before starting work") {
+		t.Error("shared core should contain rule 1")
+	}
+	if !strings.Contains(out, "Never run git and devdash close in parallel") {
+		t.Error("shared core should contain parallel execution warning")
+	}
+	if !strings.Contains(out, "Close after push") {
+		t.Error("shared core should respect closeOn parameter")
+	}
+
+	// Completing work
+	if !strings.Contains(out, "--pr=URL") {
+		t.Error("shared core should mention --pr=URL on close")
+	}
+
+	// On-demand references
+	if !strings.Contains(out, "devdash help cli") {
+		t.Error("shared core should contain on-demand help references")
+	}
+
+	// Session startup
+	if !strings.Contains(out, "devdash prime") {
+		t.Error("shared core should contain session startup instruction")
+	}
+}
+
+func TestBuildInstructionsCloseOnCommit(t *testing.T) {
+	out := buildInstructions("test-pid", "commit", agentConfig{})
+	if !strings.Contains(out, "Close after commit") {
+		t.Error("should use 'commit' as closeOn gate")
+	}
+	if strings.Contains(out, "Close after push") {
+		t.Error("should not mention push when closeOn is commit")
+	}
+}
+
+func TestBuildInstructionsPreamblePostamble(t *testing.T) {
+	out := buildInstructions("test-pid", "push", agentConfig{
+		Preamble:  "PREAMBLE_MARKER",
+		Postamble: "POSTAMBLE_MARKER",
+	})
+	preambleIdx := strings.Index(out, "PREAMBLE_MARKER")
+	coreIdx := strings.Index(out, "Core Principles")
+	postambleIdx := strings.Index(out, "POSTAMBLE_MARKER")
+
+	if preambleIdx == -1 || coreIdx == -1 || postambleIdx == -1 {
+		t.Fatal("output should contain preamble, core, and postamble")
+	}
+	if preambleIdx >= coreIdx {
+		t.Error("preamble should appear before core")
+	}
+	if coreIdx >= postambleIdx {
+		t.Error("core should appear before postamble")
+	}
+}
+
+func TestAllTemplatesShareCore(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	_ = setupClaude("test-pid", "push", false)
+	_ = setupCodex("test-pid", "push", false)
+	_ = setupCopilot("test-pid", "push", false)
+
+	claude, _ := os.ReadFile("CLAUDE.md")
+	codex, _ := os.ReadFile("AGENTS.md")
+	copilot, _ := os.ReadFile(".github/copilot-instructions.md")
+
+	// All three must contain the same core content
+	coreStrings := []string{
+		"Be a capture reflex",
+		"Create an issue before starting work. No exceptions.",
+		"Never run git and devdash close in parallel",
+		"Close after push",
+		"devdash help cli",
+		"devdash prime",
+	}
+	for _, s := range coreStrings {
+		if !strings.Contains(string(claude), s) {
+			t.Errorf("Claude template missing core string: %s", s)
+		}
+		if !strings.Contains(string(codex), s) {
+			t.Errorf("Codex template missing core string: %s", s)
+		}
+		if !strings.Contains(string(copilot), s) {
+			t.Errorf("Copilot template missing core string: %s", s)
+		}
+	}
+}
+
+func TestSetupClaudeWrite(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	err := setupClaude("test-pid", "push", false)
+	if err != nil {
+		t.Fatalf("setupClaude failed: %v", err)
+	}
+
+	data, err := os.ReadFile("CLAUDE.md")
+	if err != nil {
+		t.Fatalf("CLAUDE.md not created: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "devdash:agent-instructions") {
+		t.Error("should contain agent-instructions markers")
+	}
+	if !strings.Contains(content, "TodoWrite") {
+		t.Error("Claude template should mention TodoWrite disambiguation")
+	}
+	if !strings.Contains(content, "test-pid") {
+		t.Error("should contain project ID")
+	}
+}
+
+func TestSetupCopilotWrite(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	_ = os.Chdir(dir)
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	err := setupCopilot("test-pid", "push", false)
+	if err != nil {
+		t.Fatalf("setupCopilot failed: %v", err)
+	}
+
+	data, err := os.ReadFile(".github/copilot-instructions.md")
+	if err != nil {
+		t.Fatalf("copilot-instructions.md not created: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "devdash") {
+		t.Error("should contain devdash instructions")
+	}
+	if !strings.Contains(content, "test-pid") {
+		t.Error("should contain project ID")
 	}
 }
 
