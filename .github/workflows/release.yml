@@ -28,6 +28,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload dist for npm
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
   npm-publish:
     needs: release
     runs-on: ubuntu-latest
@@ -39,9 +46,25 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "TAG=next" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build npm packages
         run: |
@@ -53,8 +76,11 @@ jobs:
           for dir in npm/devdash-darwin-arm64 npm/devdash-darwin-x64 npm/devdash-linux-x64 npm/devdash-linux-arm64 npm/devdash-win32-x64 npm/devdash-win32-arm64; do
             if [ -d "$dir" ]; then
               cd "$dir"
-              npm publish --access public || true
+              npm publish --access public --tag ${{ steps.npm-tag.outputs.TAG }}
               cd ../..
+            else
+              echo "ERROR: $dir does not exist"
+              exit 1
             fi
           done
         env:
@@ -63,6 +89,6 @@ jobs:
       - name: Publish wrapper package
         run: |
           cd npm/devdash-cli
-          npm publish --access public
+          npm publish --access public --tag ${{ steps.npm-tag.outputs.TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
