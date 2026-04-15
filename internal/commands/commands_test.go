@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	apiPkg "github.com/jasonmassey/devdash-cli-go/internal/api"
-	"github.com/jasonmassey/devdash-cli-go/internal/config"
+	apiPkg "github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/config"
 )
 
 // newTestEnv creates a fresh command tree backed by a mock API server.

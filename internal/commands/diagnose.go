@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
-	"github.com/jasonmassey/devdash-cli-go/internal/output"
-	"github.com/jasonmassey/devdash-cli-go/internal/resolve"
+	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/output"
+	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
 

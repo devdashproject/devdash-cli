@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 func TestStatusIcon(t *testing.T) {

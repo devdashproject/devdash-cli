@@ -1,4 +1,4 @@
-module github.com/jasonmassey/devdash-cli-go
+module github.com/devdashproject/devdash-cli
 
 go 1.24.2
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 // Status icons matching the Bash version exactly.

@@ -63,7 +63,7 @@ Use this instead of manually downloading releases or pulling updates.`,
 
 			// Fetch latest version from GitHub API
 			fmt.Println("Fetching latest version...")
-			resp, err := http.Get("https://api.github.com/repos/jasonmassey/devdash-cli-go/releases/latest")
+			resp, err := http.Get("https://api.github.com/repos/devdashproject/devdash-cli/releases/latest")
 			if err != nil {
 				return fmt.Errorf("failed to check latest version: %w", err)
 			}
@@ -91,7 +91,7 @@ Use this instead of manually downloading releases or pulling updates.`,
 			fmt.Printf("Downloading devdash v%s...\n", version)
 			archive := fmt.Sprintf("devdash_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
 			url := fmt.Sprintf(
-				"https://github.com/jasonmassey/devdash-cli-go/releases/download/%s/%s",
+				"https://github.com/devdashproject/devdash-cli/releases/download/%s/%s",
 				release.TagName, archive)
 
 			tmpDir, err := os.MkdirTemp("", "devdash-update-*")

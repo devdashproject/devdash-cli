@@ -3,7 +3,7 @@ package resolve
 import (
 	"testing"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 var testBeads = []api.Bead{
