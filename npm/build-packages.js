@@ -109,9 +109,6 @@ for (const platform of PLATFORMS) {
     description: `DevDash CLI binary for ${npmOs}/${platform.npmArch}`,
     os: [npmOs],
     cpu: [platform.npmArch],
-    bin: {
-      devdash: `bin/${binaryName}`,
-    },
     repository: {
       type: "git",
       url: "https://github.com/devdashproject/devdash-cli",

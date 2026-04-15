@@ -9,6 +9,8 @@ const PLATFORM_PACKAGES = {
   "darwin-x64": "@devdashproject/devdash-darwin-x64",
   "linux-x64": "@devdashproject/devdash-linux-x64",
   "linux-arm64": "@devdashproject/devdash-linux-arm64",
+  "win32-x64": "@devdashproject/devdash-win32-x64",
+  "win32-arm64": "@devdashproject/devdash-win32-arm64",
 };
 
 function getBinaryPath() {
@@ -24,8 +26,10 @@ function getBinaryPath() {
     process.exit(1);
   }
 
+  const binaryName = process.platform === "win32" ? "devdash.exe" : "devdash";
+
   try {
-    return require.resolve(`${pkg}/bin/devdash`);
+    return require.resolve(`${pkg}/bin/${binaryName}`);
   } catch {
     console.error(
       `Platform package ${pkg} not installed. Try: npm install -g @devdashproject/devdash-cli`
