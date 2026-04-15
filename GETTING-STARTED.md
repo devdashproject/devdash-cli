@@ -16,7 +16,7 @@ They stay in sync automatically. Use whichever feels right for the moment.
 ## Step 1: Install the CLI
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jasonmassey/devdash-cli-go/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/devdashproject/devdash-cli/main/install.sh | sh
 ```
 
 Or via npm:

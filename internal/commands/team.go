@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/spf13/cobra"
 )
 

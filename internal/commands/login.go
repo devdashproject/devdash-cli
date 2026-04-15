@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/auth"
-	"github.com/jasonmassey/devdash-cli-go/internal/config"
+	"github.com/devdashproject/devdash-cli/internal/auth"
+	"github.com/devdashproject/devdash-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 

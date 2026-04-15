@@ -19,7 +19,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/jasonmassey/devdash-cli-go/internal/commands.Version={{.Version}}
+      - -X github.com/devdashproject/devdash-cli/internal/commands.Version={{.Version}}
 
 archives:
   - id: default
@@ -44,8 +44,8 @@ changelog:
 
 release:
   github:
-    owner: jasonmassey
-    name: devdash-cli-go
+    owner: devdashproject
+    name: devdash-cli
   draft: false
   prerelease: auto
 

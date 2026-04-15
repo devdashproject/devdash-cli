@@ -2,9 +2,9 @@
 set -e
 
 # DevDash CLI installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/jasonmassey/devdash-cli-go/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/devdashproject/devdash-cli/main/install.sh | sh
 
-REPO="jasonmassey/devdash-cli-go"
+REPO="devdashproject/devdash-cli"
 INSTALL_DIR="${DEVDASH_INSTALL_DIR:-$HOME/.local/bin}"
 BINARY="devdash"
 

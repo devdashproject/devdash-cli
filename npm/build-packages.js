@@ -114,7 +114,7 @@ for (const platform of PLATFORMS) {
     },
     repository: {
       type: "git",
-      url: "https://github.com/jasonmassey/devdash-cli-go",
+      url: "https://github.com/devdashproject/devdash-cli",
     },
     license: "MIT",
   };

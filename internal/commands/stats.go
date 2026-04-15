@@ -3,8 +3,8 @@ package commands
 import (
 	"fmt"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
-	"github.com/jasonmassey/devdash-cli-go/internal/output"
+	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

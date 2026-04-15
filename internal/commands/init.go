@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
-	"github.com/jasonmassey/devdash-cli-go/internal/config"
+	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 

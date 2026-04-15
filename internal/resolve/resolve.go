@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jasonmassey/devdash-cli-go/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 // ID resolves a user-provided ID (full UUID, UUID prefix, or local ID) to a full UUID.

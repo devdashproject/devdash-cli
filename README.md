@@ -1,4 +1,4 @@
-# devdash-cli-go
+# devdash-cli
 
 Dev-Dash CLI — AI-powered task tracking for coding agents.
 
@@ -11,7 +11,7 @@ This CLI can be run in your terminal but is optimized for agents. Don't feel lik
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jasonmassey/devdash-cli-go/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/devdashproject/devdash-cli/main/install.sh | sh
 ```
 
 Or via npm:
@@ -20,7 +20,7 @@ Or via npm:
 npm install -g @devdashproject/devdash-cli
 ```
 
-Or download a binary directly from [GitHub Releases](https://github.com/jasonmassey/devdash-cli-go/releases).
+Or download a binary directly from [GitHub Releases](https://github.com/devdashproject/devdash-cli/releases).
 
 ### Build from source
 
