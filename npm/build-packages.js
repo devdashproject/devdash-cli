@@ -78,25 +78,30 @@ for (const platform of PLATFORMS) {
   const binDir = path.join(pkgDir, "bin");
   fs.mkdirSync(binDir, { recursive: true });
 
-  // Find the binary from goreleaser output
+  // Find the binary from goreleaser output.
+  // GoReleaser v2 appends version suffixes: _v1 for amd64, _v8.0 for arm64.
   const binaryName = platform.binary || "devdash";
-  const archiveDir = `devdash_${platform.os}_${platform.goreleaseArch}`;
-  const binarySrc = path.join(distDir, archiveDir, binaryName);
+  const baseDir = `devdash_${platform.os}_${platform.goreleaseArch}`;
+  const candidates = [
+    baseDir,
+    `${baseDir}_v1`,
+    `${baseDir}_v8.0`,
+  ];
 
-  if (!fs.existsSync(binarySrc)) {
-    // Try alternative naming (goreleaser v2 format)
-    const altDir = `devdash_${platform.os}_${platform.goreleaseArch}_v1`;
-    const altSrc = path.join(distDir, altDir, binaryName);
-    if (fs.existsSync(altSrc)) {
-      fs.copyFileSync(altSrc, path.join(binDir, binaryName));
-    } else {
-      console.warn(
-        `Warning: binary not found for ${platform.os}/${platform.goreleaseArch}`
-      );
-      continue;
+  let found = false;
+  for (const dir of candidates) {
+    const src = path.join(distDir, dir, binaryName);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(binDir, binaryName));
+      found = true;
+      break;
     }
-  } else {
-    fs.copyFileSync(binarySrc, path.join(binDir, binaryName));
+  }
+  if (!found) {
+    console.error(
+      `ERROR: binary not found for ${platform.os}/${platform.goreleaseArch} (tried: ${candidates.join(", ")})`
+    );
+    process.exit(1);
   }
 
   fs.chmodSync(path.join(binDir, binaryName), 0o755);
