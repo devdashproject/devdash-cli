@@ -8,6 +8,54 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	managedBlockStart = "<!-- devdash:agent-instructions -->"
+	managedBlockEnd   = "<!-- /devdash:agent-instructions -->"
+)
+
+// writeManagedInstructions wraps instructions in sentinel markers and writes
+// them to target. Behavior:
+//   - file missing: write the managed block.
+//   - file has markers: skip if !force; on force, replace the markers-to-markers
+//     block in place, preserving surrounding user content.
+//   - file lacks markers: skip if !force and the file mentions devdash
+//     (legacy substring check); otherwise append the managed block.
+func writeManagedInstructions(target, instructions string, force bool) error {
+	block := managedBlockStart + "\n\n" + instructions + "\n" + managedBlockEnd
+
+	existing, err := os.ReadFile(target)
+	if err != nil {
+		return os.WriteFile(target, []byte(block+"\n"), 0644)
+	}
+
+	s := string(existing)
+	startIdx := strings.Index(s, managedBlockStart)
+	endIdx := strings.Index(s, managedBlockEnd)
+
+	if startIdx >= 0 && endIdx > startIdx {
+		if !force {
+			fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
+			return nil
+		}
+		end := endIdx + len(managedBlockEnd)
+		newContent := s[:startIdx] + block + s[end:]
+		return os.WriteFile(target, []byte(newContent), 0644)
+	}
+
+	if !force && strings.Contains(s, "devdash") {
+		fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
+		return nil
+	}
+
+	sep := "\n\n"
+	if strings.HasSuffix(s, "\n\n") {
+		sep = ""
+	} else if strings.HasSuffix(s, "\n") {
+		sep = "\n"
+	}
+	return os.WriteFile(target, []byte(s+sep+block+"\n"), 0644)
+}
+
 func newAgentSetupCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent-setup",
@@ -174,19 +222,8 @@ stats, and output format guidance — that these static instructions cannot.
 
 func setupClaude(pid, closeOn string, force bool) error {
 	target := "CLAUDE.md"
-	if !force {
-		if _, err := os.Stat(target); err == nil {
-			data, _ := os.ReadFile(target)
-			if strings.Contains(string(data), "devdash") {
-				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
-				return nil
-			}
-		}
-	}
 
-	preamble := fmt.Sprintf(`<!-- devdash:agent-instructions -->
-
-# DevDash — AI Agent Task Tracking
+	preamble := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
 
 This project uses **devdash** (`+"`dd`"+`) for task tracking. DevDash is a shared memory
 between you and the user — a place where ideas, decisions, and progress are captured so
@@ -206,22 +243,14 @@ Project ID: %s
 - You may use your built-in task tools (TaskCreate, TodoWrite, etc.) for your own tracking, but you **must also** create and update devdash issues. Devdash is the system of record.
 - When the user asks you to implement a plan, feature, or fix: your **very first action** is ` + "`devdash create`" + `. Do not read files, do not write code — create the issue first.
 - For multi-step plans, create one devdash issue per step before starting any implementation. Group them under a parent issue. Then work through them sequentially: mark in-progress, implement, commit, close, move to next.
-- After creating issues, follow the normal workflow: mark in-progress, do the work, commit, then close.
-<!-- /devdash:agent-instructions -->`
+- After creating issues, follow the normal workflow: mark in-progress, do the work, commit, then close.`
 
 	instructions := buildInstructions(pid, closeOn, agentConfig{
 		Preamble:  preamble,
 		Postamble: postamble,
 	})
 
-	var content []byte
-	if existing, err := os.ReadFile(target); err == nil && !force {
-		content = append(existing, []byte("\n\n"+instructions)...)
-	} else {
-		content = []byte(instructions)
-	}
-
-	if err := os.WriteFile(target, content, 0644); err != nil {
+	if err := writeManagedInstructions(target, instructions, force); err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ %s configured for devdash\n", target)
@@ -230,15 +259,6 @@ Project ID: %s
 
 func setupCodex(pid, closeOn string, force bool) error {
 	target := "AGENTS.md"
-	if !force {
-		if _, err := os.Stat(target); err == nil {
-			data, _ := os.ReadFile(target)
-			if strings.Contains(string(data), "devdash") {
-				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
-				return nil
-			}
-		}
-	}
 
 	preamble := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
 
@@ -266,14 +286,7 @@ Project ID: %s
 		Postamble: postamble,
 	})
 
-	var content []byte
-	if existing, err := os.ReadFile(target); err == nil && !force {
-		content = append(existing, []byte("\n\n"+instructions)...)
-	} else {
-		content = []byte(instructions)
-	}
-
-	if err := os.WriteFile(target, content, 0644); err != nil {
+	if err := writeManagedInstructions(target, instructions, force); err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ %s configured for devdash\n", target)
@@ -282,15 +295,6 @@ Project ID: %s
 
 func setupCopilot(pid, closeOn string, force bool) error {
 	target := ".github/copilot-instructions.md"
-	if !force {
-		if _, err := os.Stat(target); err == nil {
-			data, _ := os.ReadFile(target)
-			if strings.Contains(string(data), "devdash") {
-				fmt.Printf("  %s already contains devdash instructions (use --force to overwrite)\n", target)
-				return nil
-			}
-		}
-	}
 
 	preamble := fmt.Sprintf(`# DevDash — AI Agent Task Tracking
 
@@ -315,14 +319,7 @@ Project ID: %s
 		return err
 	}
 
-	var content []byte
-	if existing, err := os.ReadFile(target); err == nil && !force {
-		content = append(existing, []byte("\n\n"+instructions)...)
-	} else {
-		content = []byte(instructions)
-	}
-
-	if err := os.WriteFile(target, content, 0644); err != nil {
+	if err := writeManagedInstructions(target, instructions, force); err != nil {
 		return err
 	}
 	fmt.Printf("  ✓ %s configured for devdash\n", target)
