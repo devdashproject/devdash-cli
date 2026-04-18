@@ -66,8 +66,45 @@ type Bead struct {
 	StaleSince       string `json:"staleSince,omitempty"`
 	StaleMinutes     int    `json:"staleMinutes,omitempty"`
 
+	// Enriched fields from GET /beads/:id
+	Children         []BeadSummary `json:"children,omitempty"`
+	Siblings         []BeadSummary `json:"siblings,omitempty"`
+	Comments         []BeadComment `json:"comments,omitempty"`
+	Parent           *BeadSummary  `json:"parent,omitempty"`
+	BlockedByDetails []BeadSummary `json:"blockedByDetails,omitempty"`
+	BlocksDetails    []BeadSummary `json:"blocksDetails,omitempty"`
+	RecentJobs       []JobSummary  `json:"recentJobs,omitempty"`
+
 	CreatedAt FlexTime `json:"createdAt"`
 	UpdatedAt FlexTime `json:"updatedAt"`
+}
+
+// BeadSummary is a lightweight reference to a related issue.
+type BeadSummary struct {
+	ID       string `json:"id"`
+	Subject  string `json:"subject"`
+	Status   string `json:"status"`
+	BeadType string `json:"beadType,omitempty"`
+	Priority int    `json:"priority"`
+}
+
+// BeadComment is a comment on an issue.
+type BeadComment struct {
+	ID         string `json:"id"`
+	Content    string `json:"content"`
+	AuthorID   string `json:"authorId,omitempty"`
+	AuthorType string `json:"authorType,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+// JobSummary is a lightweight reference to an agent job.
+type JobSummary struct {
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	JobType     string `json:"jobType,omitempty"`
+	Error       string `json:"error,omitempty"`
+	StartedAt   string `json:"startedAt,omitempty"`
+	CompletedAt string `json:"completedAt,omitempty"`
 }
 
 // CompletionResult holds metadata from closing an issue.

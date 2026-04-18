@@ -1,10 +1,10 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
-	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
@@ -39,16 +39,12 @@ to other tools like jq.`,
 				return err
 			}
 
-			var bead api.Bead
-			if err := json.Unmarshal(data, &bead); err != nil {
-				return fmt.Errorf("failed to parse bead: %w", err)
+			// Pretty-print the raw API response so new server fields appear automatically
+			var buf bytes.Buffer
+			if err := json.Indent(&buf, data, "", "  "); err != nil {
+				return fmt.Errorf("failed to format response: %w", err)
 			}
-
-			out, err := json.MarshalIndent(bead, "", "  ")
-			if err != nil {
-				return err
-			}
-			fmt.Println(string(out))
+			fmt.Println(buf.String())
 			return nil
 		},
 	}
