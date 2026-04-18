@@ -68,6 +68,7 @@ up to 120 seconds for the browser callback before timing out.`,
 					return fmt.Errorf("failed to save token: %w", err)
 				}
 				fmt.Println("Authentication successful! Token saved.")
+				printLoginBreadcrumbs()
 				return nil
 			case <-time.After(120 * time.Second):
 				return fmt.Errorf("authentication timed out after 120 seconds")
@@ -91,4 +92,17 @@ func openBrowser(url string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func printLoginBreadcrumbs() {
+	if !isInsideGitRepo() {
+		fmt.Println("\nNext: navigate to a project directory and run `devdash init`.")
+		return
+	}
+	if _, err := os.Stat(config.ProjectFileName); err == nil {
+		fmt.Println("\nThis repo is already initialized. Run `devdash ready` to see open issues.")
+		return
+	}
+	fmt.Println("\nThis repo isn't linked to a devdash project yet.")
+	fmt.Println("Run `devdash init` to link it and start tracking issues.")
 }

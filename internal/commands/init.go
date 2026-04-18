@@ -122,6 +122,11 @@ already exists, the command exits early without overwriting it.`,
 	}
 }
 
+func isInsideGitRepo() bool {
+	_, err := exec.Command("git", "rev-parse", "--git-dir").Output()
+	return err == nil
+}
+
 func detectGitRepo() string {
 	out, err := exec.Command("git", "remote", "get-url", "origin").Output()
 	if err != nil {
