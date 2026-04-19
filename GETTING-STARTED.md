@@ -69,10 +69,19 @@ Create a project either from the [web dashboard](https://dev-dash-blue.vercel.ap
 devdash project create --name="My Project"
 ```
 
-Then set your project ID in your shell so the CLI knows which project to use:
+Then tell the CLI which project to use. You have two options:
+
+**Option 1: Set it once in your shell** (recommended)
 
 ```bash
 export DD_PROJECT_ID=<your-project-id>   # add to ~/.zshrc or ~/.bashrc to persist
+```
+
+**Option 2: Specify it per command**
+
+```bash
+devdash ready --project=<your-project-id>
+devdash create --project=<your-project-id> --title="..."
 ```
 
 You can find the project ID in your dashboard URL or by running `devdash project list`.
