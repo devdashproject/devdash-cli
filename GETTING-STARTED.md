@@ -47,65 +47,45 @@ Your browser will open for Google sign-in. After you authenticate, the auth toke
 
 ---
 
-## Step 3: Create or connect a project
+## Step 3: Connect to a project
 
-### Option A: Start from the web (recommended for new projects)
+### If you have a git repo
 
-1. Head to [dev-dash-blue.vercel.app](https://dev-dash-blue.vercel.app) and sign in
-2. You'll land on the **onboarding page** — click **Connect GitHub**
-3. Pick a repo from the list (or enter a project name manually)
-4. Hit **Create Project**
-
-Dev-Dash can scan your GitHub issues and pull them in as tasks, but sometimes it's nice to have a clean slate 😁. Now that you have a project, let's link up your local work. 
-
-In your terminal, navigate to the root of the repo you want to work in:
+Navigate to the root of the repo you want to work in and run:
 
 ```bash
-devdash init
+devdash link
 ```
 
-`init` auto-detects your GitHub remote (case-insensitive) and links the CLI to your project. If auto-detect fails, you'll see a numbered list to pick from — or you can pass a name or ID directly:
+`link` detects your GitHub remote and auto-matches it to a Dev-Dash project if one exists. If there's no match, it walks you through picking an existing project or creating a new one.
+
+A `.devdash` file is written to the directory you chose to link — this is how the CLI knows which devdash project to use when you're working in this repo. Commit it so teammates automatically get the same project connection without having to run `devdash link` themselves.
+
+### If you don't have a git repo
+
+Create a project from the [web dashboard](https://dev-dash-blue.vercel.app), then set your project ID in your shell:
 
 ```bash
-devdash init MyProject          # Match by name (case-insensitive)
-devdash init 896b3dbc           # Match by ID prefix
-devdash init <full-uuid>        # Match by exact UUID
+export DD_PROJECT_ID=<your-project-id>   # add to ~/.zshrc or ~/.bashrc to persist
 ```
 
-A small `.devdash` file is created — commit it so teammates can use the CLI too.
-
-### Option B: Start from the CLI
-
-If you'd rather skip the browser:
-
-```bash
-devdash project create --name="My Project" --repo=owner/repo
-devdash init
-```
-
-You can always connect GitHub and configure team settings from the web dashboard later.
+You can find the project ID in your dashboard URL or by running `devdash project list` after creating the project.
 
 ---
 
 ## Step 4: Set up the shortcut (optional)
 
-During `init`, you'll be asked if you want to alias `dd` to `devdash`. If you said no (or missed it), you can do it anytime:
-
-```bash
-devdash alias-setup
-```
+Run `devdash alias-setup` to add a `dd` shortcut to your shell — it's offered automatically after login, or you can run it any time.
 
 From here on, the examples use `dd`. If you skipped the alias, substitute `devdash` everywhere.
 
-> **Heads up:** The alias installation shadows `/usr/bin/dd` (a Unix disk-copy utility). If you use that tool regularly, skip the alias and use the full name `devdash`.
+> The alias shadows `/usr/bin/dd` (a Unix disk-copy utility). If you use that tool, skip this step.
 
 ---
 
 ## Step 5: Configure your AI agents (optional)
 
 If you use AI coding agents (Claude Code, Codex, Cursor, Copilot, Windsurf, Cline), you can auto-generate config files so they know to use `dd` for task tracking.
-
-`devdash init` will detect agent configs and offer to run this during setup. You can also run it directly:
 
 ```bash
 dd agent-setup
@@ -131,7 +111,7 @@ See what's ready to work on:
 dd ready
 ```
 
-This shows all unblocked tasks sorted by automability then priority. Pick one and dig in:
+This shows all unblocked tasks sorted by priority, with the most actionable tasks first. Pick one and dig in:
 
 ```bash
 dd show <id>
@@ -242,12 +222,12 @@ dd diagnose <id>         # Investigate a task: status, jobs, failures
 
 ## Multi-repo setup
 
-Each repo gets its own `.devdash` file. Just run `init` in each one:
+Each repo gets its own `.devdash` file. Just run `link` in each one:
 
 ```bash
-cd ~/projects/frontend && dd init
-cd ~/projects/backend && dd init
-cd ~/projects/infra && dd init
+cd ~/projects/frontend && dd link
+cd ~/projects/backend && dd link
+cd ~/projects/infra && dd link
 ```
 
 The CLI reads `.devdash` to know which project you're working in. No global state to juggle.
@@ -259,7 +239,7 @@ The CLI reads `.devdash` to know which project you're working in. No global stat
 | Command | What it does |
 |---------|-------------|
 | `dd login` | Sign in via browser |
-| `dd init` | Link repo to project |
+| `dd link` | Link repo to project |
 | `dd ready` | Show unblocked tasks |
 | `dd list` | All open tasks |
 | `dd show <id>` | Task details |
@@ -282,7 +262,7 @@ The CLI reads `.devdash` to know which project you're working in. No global stat
 
 **"Not logged in"** — Run `dd login`.
 
-**"No project configured"** — Run `dd init` inside your repo.
+**"No project configured"** — Run `dd link` inside your repo. If you don't have a git repo, either pass `--project=<id>` to each command, or set `DD_PROJECT_ID=<your-project-id>` in your shell. Find your project ID in the web dashboard or with `devdash project list`.
 
 **Login port in use** — The CLI auto-tries ports 18787-18792. If all are busy, free one up and retry.
 
