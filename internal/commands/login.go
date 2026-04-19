@@ -100,27 +100,37 @@ func printLoginBreadcrumbs() {
 	// Home/root or not in git repo
 	if isHomeOrRoot(cwd) || !isInsideGitRepo() {
 		fmt.Println("\nNavigate to your project's top level directory and run `devdash link` to get started.")
+		printAliasSetupOffer()
 		return
 	}
 
 	repoRoot, err := gitRepoRoot()
 	if err != nil {
 		fmt.Println("\nNavigate to your project's top level directory and run `devdash link` to get started.")
+		printAliasSetupOffer()
 		return
 	}
 
 	// In git repo but not at root
 	if cwd != repoRoot {
 		fmt.Printf("\nNavigate to your repo's top level directory (%s) and run `devdash link` to get started.\n", repoRoot)
+		printAliasSetupOffer()
 		return
 	}
 
 	// At git root, check if linked
 	if _, err := os.Stat(config.ProjectFileName); err == nil {
 		fmt.Println("\nThis repo is already linked. Run `devdash ready` to see open issues.")
+		printAliasSetupOffer()
 		return
 	}
 
 	// At git root, not yet linked
 	fmt.Println("\nRun `devdash link` to connect this repo to a devdash project.")
+	printAliasSetupOffer()
+}
+
+func printAliasSetupOffer() {
+	fmt.Println()
+	fmt.Println("Want to make devdash easier to type? Run `devdash alias-setup` to add a 'dd' shortcut.")
 }
