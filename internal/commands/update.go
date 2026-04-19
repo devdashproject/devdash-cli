@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
@@ -15,8 +17,10 @@ func newUpdateCmd(d *Deps) *cobra.Command {
 		Long: `Update one or more fields on an existing issue in a single call.
 
 Supported flags: --status, --title, --description, --priority, --owner,
---parent, --pre-instructions, --due, and --estimate. At least one flag
-must be provided or the command returns an error.
+--parent, --pre-instructions, --due, --estimate, and --sort-order.
+At least one flag must be provided or the command returns an error.
+
+Use --sort-order=none to remove explicit ordering (reverts to priority/date fallback).
 
 The <id> argument accepts full UUIDs or short prefixes that uniquely
 identify an issue within the current project.`,
@@ -85,17 +89,39 @@ identify an issue within the current project.`,
 				req.EstimatedMinutes = &v
 				hasChanges = true
 			}
+			if cmd.Flags().Changed("sort-order") {
+				v, _ := cmd.Flags().GetString("sort-order")
+				if v == "none" {
+					req.SortOrder = json.RawMessage("null")
+				} else {
+					n, err := strconv.Atoi(v)
+					if err != nil || n < 0 {
+						return fmt.Errorf("--sort-order must be a non-negative integer or 'none'")
+					}
+					b, _ := json.Marshal(n)
+					req.SortOrder = json.RawMessage(b)
+				}
+				hasChanges = true
+			}
 
 			if !hasChanges {
 				return fmt.Errorf("no changes specified")
 			}
 
-			_, err = d.Client.Patch("/beads/"+uuid, req)
+			data, err := d.Client.Patch("/beads/"+uuid, req)
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Updated: %s\n", uuid)
+			var resp struct {
+				Warnings []string `json:"warnings"`
+			}
+			if json.Unmarshal(data, &resp) == nil {
+				for _, w := range resp.Warnings {
+					fmt.Printf("Warning: %s\n", w)
+				}
+			}
 			return nil
 		},
 	}
@@ -108,5 +134,6 @@ identify an issue within the current project.`,
 	cmd.Flags().String("pre-instructions", "", "Agent-specific context")
 	cmd.Flags().String("due", "", "Due date (YYYY-MM-DD)")
 	cmd.Flags().Int("estimate", 0, "Estimated minutes")
+	cmd.Flags().String("sort-order", "", "Sort order among siblings (integer or 'none' to clear)")
 	return cmd
 }
