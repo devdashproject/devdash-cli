@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,5 +119,82 @@ func TestWriteManagedInstructions_NoMarkersAppends(t *testing.T) {
 	}
 	if !strings.Contains(s, managedBlockStart) || !strings.Contains(s, managedBlockEnd) {
 		t.Errorf("sentinels missing on append: %q", s)
+	}
+}
+
+func TestSetupClaudeHooks_CreatesHooks(t *testing.T) {
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	if err := setupClaudeHooks(false); err != nil {
+		t.Fatalf("setupClaudeHooks failed: %v", err)
+	}
+
+	data, err := os.ReadFile(".claude/settings.local.json")
+	if err != nil {
+		t.Fatalf("settings file not created: %v", err)
+	}
+
+	var config settingsConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	hooks, ok := config.Hooks["SessionStart"].([]interface{})
+	if !ok || len(hooks) != 2 {
+		t.Fatalf("SessionStart hooks not configured correctly: %v", config.Hooks)
+	}
+}
+
+func TestSetupClaudeHooks_PreservesPermissions(t *testing.T) {
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	// Create initial config with permissions
+	if err := os.MkdirAll(".claude", 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	initial := map[string]interface{}{
+		"permissions": map[string]interface{}{
+			"allow": []string{"Bash(test:*)"},
+		},
+	}
+	data, _ := json.Marshal(initial)
+	if err := os.WriteFile(".claude/settings.local.json", data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := setupClaudeHooks(false); err != nil {
+		t.Fatalf("setupClaudeHooks failed: %v", err)
+	}
+
+	result, _ := os.ReadFile(".claude/settings.local.json")
+	var config settingsConfig
+	if err := json.Unmarshal(result, &config); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	if config.Permissions == nil {
+		t.Fatal("permissions were not preserved")
+	}
+
+	perms, ok := config.Permissions["allow"].([]interface{})
+	if !ok || len(perms) != 1 {
+		t.Fatalf("permissions not preserved correctly: %v", config.Permissions)
 	}
 }

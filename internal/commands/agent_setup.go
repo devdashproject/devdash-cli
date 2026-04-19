@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -254,6 +255,11 @@ Project ID: %s
 		return err
 	}
 	fmt.Printf("  ✓ %s configured for devdash\n", target)
+
+	if err := setupClaudeHooks(force); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -323,5 +329,86 @@ Project ID: %s
 		return err
 	}
 	fmt.Printf("  ✓ %s configured for devdash\n", target)
+	return nil
+}
+
+type settingsConfig struct {
+	Hooks       map[string]interface{} `json:"hooks,omitempty"`
+	Permissions map[string]interface{} `json:"permissions,omitempty"`
+}
+
+type sessionStartHook struct {
+	Matcher string        `json:"matcher"`
+	Hooks   []hookCommand `json:"hooks"`
+}
+
+type hookCommand struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+}
+
+func setupClaudeHooks(force bool) error {
+	configDir := ".claude"
+	configFile := configDir + "/settings.local.json"
+
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return err
+	}
+
+	config := settingsConfig{
+		Hooks: map[string]interface{}{
+			"SessionStart": []sessionStartHook{
+				{
+					Matcher: "startup",
+					Hooks: []hookCommand{
+						{
+							Type:    "command",
+							Command: "dd prime",
+						},
+					},
+				},
+				{
+					Matcher: "clear",
+					Hooks: []hookCommand{
+						{
+							Type:    "command",
+							Command: "dd prime",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Merge with existing config if file exists
+	if data, err := os.ReadFile(configFile); err == nil {
+		var existing settingsConfig
+		if err := json.Unmarshal(data, &existing); err != nil {
+			return err
+		}
+		// Always preserve existing permissions and other settings
+		if existing.Permissions != nil {
+			config.Permissions = existing.Permissions
+		}
+		// Merge other hook types if they exist (unless force is true)
+		if !force && len(existing.Hooks) > 0 {
+			for k, v := range existing.Hooks {
+				if k != "SessionStart" {
+					config.Hooks[k] = v
+				}
+			}
+		}
+	}
+
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(configFile, append(data, '\n'), 0644); err != nil {
+		return err
+	}
+
+	fmt.Printf("  ✓ %s configured with SessionStart hooks\n", configFile)
 	return nil
 }

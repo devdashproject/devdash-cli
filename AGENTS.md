@@ -2,15 +2,16 @@
 
 # DevDash — AI Agent Task Tracking
 
-This project uses **devdash** (`dd`) for task tracking. DevDash is a shared memory
+This project uses **devdash** for task tracking. DevDash is a shared memory
 between you and the user — a place where ideas, decisions, and progress are captured so
 nothing gets lost.
 
-Run devdash commands yourself via the terminal — do not just tell the user to run them.
-Do NOT use TodoWrite, TaskCreate, `bd`, or markdown files for tracking. When the user
-says "dd", they mean the devdash CLI, not the Unix `dd` data-copy utility.
+Run devdash commands yourself in the terminal; do not ask the user to run them for you.
+Do NOT use markdown files or other tools for task tracking.
 
 Issues are called "beads" internally. You'll see this in fields like `parentBeadId`.
+
+Project ID: 47eb046a-b02a-41b4-926f-8bc7138ab470
 
 ## Core Principles
 
@@ -33,7 +34,7 @@ issue.
 2. `devdash update <id> --status=in_progress` before starting work on an issue.
 3. Close with a substantive summary — write it for a future reader with zero context.
 4. Don't batch unrelated work into a single issue.
-- **Close after push**: Only close issues after `git push` succeeds — never before.
+5. **Close after push**: Only close issues after `git push` succeeds — never before.
 6. No orphaned work: at session end, every commit must map to a closed issue.
 7. Git operations MUST succeed before closing. Never run git and devdash close in parallel.
 8. Preserve stderr: avoid `2>/dev/null` on devdash commands.
@@ -55,10 +56,17 @@ Run these when you need detailed guidance:
 - `devdash help pr` — PR footer format and multi-issue PRs
 - `devdash help projects` — Cross-project dependencies and multi-repo work
 
+## Session Startup
+
+Run `devdash prime` at the start of every new session and after any context loss
+(compaction, clear, handoff). It provides dynamic project context — team, health
+stats, and output format guidance — that these static instructions cannot.
+
 ## Agent-Specific Instructions
 
-- You may use your built-in task tools (TaskCreate, TodoWrite, etc.) for your own tracking, but you **must also** create and update devdash issues. Devdash is the system of record.
-- When the user asks you to implement a plan, feature, or fix: your **very first action** is `devdash create`. Do not read files, do not write code — create the issue first.
-- For multi-step plans, create one devdash issue per step before starting any implementation. Group them under a parent issue. Then work through them sequentially: mark in-progress, implement, commit, close, move to next.
-- After creating issues, follow the normal workflow: mark in-progress, do the work, commit, then close.
+- Minimize redundant startup work after `devdash prime`. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
+- Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
+- Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
+- Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.
+
 <!-- /devdash:agent-instructions -->
