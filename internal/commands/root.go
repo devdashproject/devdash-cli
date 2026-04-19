@@ -104,7 +104,14 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	rootCmd.AddCommand(newJobsCmd(deps))
 	rootCmd.AddCommand(newDiagnoseCmd(deps))
 	rootCmd.AddCommand(newLoginCmd(deps))
-	rootCmd.AddCommand(newInitCmd(deps))
+	rootCmd.AddCommand(newLinkCmd(deps))
+
+	// Keep 'init' as hidden alias for backward compatibility
+	initAlias := newLinkCmd(deps)
+	initAlias.Use = "init"
+	initAlias.Hidden = true
+	rootCmd.AddCommand(initAlias)
+
 	rootCmd.AddCommand(newDoctorCmd(deps))
 	rootCmd.AddCommand(newTeamCmd(deps))
 	rootCmd.AddCommand(newPrimeCmd(deps))
