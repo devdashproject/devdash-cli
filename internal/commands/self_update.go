@@ -194,7 +194,17 @@ activate it in your current session.`,
 			case strings.Contains(shell, "fish"):
 				rcFile = filepath.Join(home, ".config", "fish", "config.fish")
 			default:
-				return fmt.Errorf("unsupported shell: %s", shell)
+				if runtime.GOOS == "windows" {
+					fmt.Println("Automatic alias setup isn't supported on Windows yet.")
+					fmt.Println()
+					fmt.Println("To add the 'dd' alias in PowerShell, add this line to your $PROFILE:")
+					fmt.Println("  Set-Alias dd devdash")
+					fmt.Println()
+					fmt.Println("Open your profile with: notepad $PROFILE")
+					fmt.Println("Then reload it with:    . $PROFILE")
+					return nil
+				}
+				return fmt.Errorf("unsupported shell %q — add 'alias dd=devdash' to your shell RC file manually", shell)
 			}
 
 			aliasLine := "alias dd='devdash'"
