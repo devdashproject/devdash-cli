@@ -63,13 +63,19 @@ A `.devdash` file is written to the directory you chose to link — this is how 
 
 ### If you don't have a git repo
 
-Create a project from the [web dashboard](https://dev-dash-blue.vercel.app), then set your project ID in your shell:
+Create a project either from the [web dashboard](https://dev-dash-blue.vercel.app) or the CLI:
+
+```bash
+devdash project create --name="My Project"
+```
+
+Then set your project ID in your shell so the CLI knows which project to use:
 
 ```bash
 export DD_PROJECT_ID=<your-project-id>   # add to ~/.zshrc or ~/.bashrc to persist
 ```
 
-You can find the project ID in your dashboard URL or by running `devdash project list` after creating the project.
+You can find the project ID in your dashboard URL or by running `devdash project list`.
 
 ---
 
