@@ -363,7 +363,7 @@ func setupClaudeHooks(force bool) error {
 					Hooks: []hookCommand{
 						{
 							Type:    "command",
-							Command: "dd prime",
+							Command: "devdash prime",
 						},
 					},
 				},
@@ -372,7 +372,7 @@ func setupClaudeHooks(force bool) error {
 					Hooks: []hookCommand{
 						{
 							Type:    "command",
-							Command: "dd prime",
+							Command: "devdash prime",
 						},
 					},
 				},
