@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -63,6 +64,7 @@ type Bead struct {
 
 	DueDate          string `json:"dueDate,omitempty"`
 	EstimatedMinutes int    `json:"estimatedMinutes,omitempty"`
+	SortOrder        *int   `json:"sortOrder,omitempty"`
 	StaleSince       string `json:"staleSince,omitempty"`
 	StaleMinutes     int    `json:"staleMinutes,omitempty"`
 
@@ -176,20 +178,22 @@ type CreateBeadRequest struct {
 	ParentBeadID     string `json:"parentBeadId,omitempty"`
 	DueDate          string `json:"dueDate,omitempty"`
 	EstimatedMinutes *int   `json:"estimatedMinutes,omitempty"`
+	SortOrder        *int   `json:"sortOrder,omitempty"`
 }
 
 // UpdateBeadRequest is the body for PATCH /beads/{id}.
 type UpdateBeadRequest struct {
-	ProjectID        string  `json:"projectId"`
-	Subject          *string `json:"subject,omitempty"`
-	Description      *string `json:"description,omitempty"`
-	Status           *string `json:"status,omitempty"`
-	Priority         *int    `json:"priority,omitempty"`
-	AssignedTo       *string `json:"assignedTo,omitempty"`
-	ParentBeadID     *string `json:"parentBeadId,omitempty"`
-	PreInstructions  *string `json:"preInstructions,omitempty"`
-	DueDate          *string `json:"dueDate,omitempty"`
-	EstimatedMinutes *int    `json:"estimatedMinutes,omitempty"`
+	ProjectID        string          `json:"projectId"`
+	Subject          *string         `json:"subject,omitempty"`
+	Description      *string         `json:"description,omitempty"`
+	Status           *string         `json:"status,omitempty"`
+	Priority         *int            `json:"priority,omitempty"`
+	AssignedTo       *string         `json:"assignedTo,omitempty"`
+	ParentBeadID     *string         `json:"parentBeadId,omitempty"`
+	PreInstructions  *string         `json:"preInstructions,omitempty"`
+	DueDate          *string         `json:"dueDate,omitempty"`
+	EstimatedMinutes *int            `json:"estimatedMinutes,omitempty"`
+	SortOrder        json.RawMessage `json:"sortOrder,omitempty"`
 }
 
 // CloseBeadRequest is the body for closing a single bead.

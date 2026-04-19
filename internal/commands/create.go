@@ -18,7 +18,7 @@ func newCreateCmd(d *Deps) *cobra.Command {
 
 Requires --title. Optionally set the type (task, bug, feature,
 enhancement, thought), priority (0=critical through 4=backlog),
-description, parent issue, due date, and time estimate.
+description, parent issue, due date, time estimate, and sort order.
 
 The new issue is created in "pending" status. Use "devdash update"
 to mark it in_progress when you begin work.`,
@@ -67,6 +67,11 @@ to mark it in_progress when you begin work.`,
 				req.EstimatedMinutes = &estimate
 			}
 
+			if cmd.Flags().Changed("sort-order") {
+				v, _ := cmd.Flags().GetInt("sort-order")
+				req.SortOrder = &v
+			}
+
 			data, err := d.Client.Post("/beads", req)
 			if err != nil {
 				return err
@@ -78,6 +83,14 @@ to mark it in_progress when you begin work.`,
 			}
 
 			fmt.Printf("Created: %s - %s\n", bead.ID, bead.Subject)
+			var resp struct {
+				Warnings []string `json:"warnings"`
+			}
+			if json.Unmarshal(data, &resp) == nil {
+				for _, w := range resp.Warnings {
+					fmt.Printf("Warning: %s\n", w)
+				}
+			}
 			return nil
 		},
 	}
@@ -88,5 +101,6 @@ to mark it in_progress when you begin work.`,
 	cmd.Flags().String("parent", "", "Parent bead ID")
 	cmd.Flags().String("due", "", "Due date (YYYY-MM-DD)")
 	cmd.Flags().Int("estimate", 0, "Estimated minutes")
+	cmd.Flags().Int("sort-order", 0, "Display order among sibling tasks (0-based integer)")
 	return cmd
 }
