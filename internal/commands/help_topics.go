@@ -61,7 +61,7 @@ var helpTopics = map[string]string{
 
 ## Setup & Utility
   login [--no-browser]                 Authenticate
-  init                                 Initialize project in current repo
+  link                                 Link current repo to a devdash project
   doctor                               Check configuration
   version                              Print version
   self-update                          Update devdash to the latest version

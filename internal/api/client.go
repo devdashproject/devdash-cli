@@ -92,11 +92,14 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 		}
 		// Try to extract error message from JSON
 		var errResp struct {
-			Error   string `json:"error"`
-			Message string `json:"message"`
+			Error          string `json:"error"`
+			Message        string `json:"message"`
+			UpgradeMessage string `json:"upgrade_message"`
 		}
 		if json.Unmarshal(respBody, &errResp) == nil {
-			if errResp.Error != "" {
+			if errResp.UpgradeMessage != "" {
+				apiErr.Message = fmt.Sprintf("CLI update required: %s\nRun: devdash self-update", errResp.UpgradeMessage)
+			} else if errResp.Error != "" {
 				apiErr.Message = errResp.Error
 			} else if errResp.Message != "" {
 				apiErr.Message = errResp.Message

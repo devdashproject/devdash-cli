@@ -69,5 +69,4 @@ stats, and output format guidance — that these static instructions cannot.
 - When the user asks you to implement a plan, feature, or fix: your **very first action** is `devdash create`. Do not read files, do not write code — create the issue first.
 - For multi-step plans, create one devdash issue per step before starting any implementation. Group them under a parent issue. Then work through them sequentially: mark in-progress, implement, commit, close, move to next.
 - After creating issues, follow the normal workflow: mark in-progress, do the work, commit, then close.
-
 <!-- /devdash:agent-instructions -->

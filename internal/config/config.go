@@ -114,7 +114,7 @@ func (c *Config) RequireToken() (string, error) {
 // RequireProjectID returns the project ID or an error if not configured.
 func (c *Config) RequireProjectID() (string, error) {
 	if c.ProjectID == "" {
-		return "", fmt.Errorf("no project configured — run 'devdash init' or set DD_PROJECT_ID")
+		return "", fmt.Errorf("no project configured — run 'devdash link' or set DD_PROJECT_ID")
 	}
 	return c.ProjectID, nil
 }

@@ -45,7 +45,7 @@ configuration and environment issues in one shot.`,
 			if c != nil && c.ProjectID != "" {
 				fmt.Printf("✓ Project: %s\n", c.ProjectID)
 			} else {
-				fmt.Printf("○ Project: not configured — run 'devdash init'\n")
+				fmt.Printf("○ Project: not configured — run 'devdash link'\n")
 			}
 
 			if _, err := os.Stat(config.ProjectFileName); err == nil {

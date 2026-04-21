@@ -1,5 +1,3 @@
-<!-- devdash:agent-instructions -->
-
 # DevDash — AI Agent Task Tracking
 
 This project uses **devdash** for task tracking. DevDash is a shared memory
@@ -68,5 +66,3 @@ stats, and output format guidance — that these static instructions cannot.
 - Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
 - Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
 - Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.
-
-<!-- /devdash:agent-instructions -->
