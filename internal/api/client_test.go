@@ -140,3 +140,35 @@ func TestJSONPropagatesError(t *testing.T) {
 		t.Fatal("should propagate error")
 	}
 }
+
+func TestClientUpgradeMessage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(410)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":            "gone",
+			"upgrade_message":  "This endpoint was removed in v0.5.0. Run devdash self-update.",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token")
+	client.BaseURL = server.URL
+
+	_, err := client.Do("GET", "/deprecated", nil)
+	if err == nil {
+		t.Fatal("should return error for 410")
+	}
+
+	apiErr, ok := err.(*APIError)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+	if apiErr.StatusCode != 410 {
+		t.Errorf("StatusCode = %d, want 410", apiErr.StatusCode)
+	}
+	// Verify upgrade_message is parsed and formatted with upgrade guidance
+	expectedMsg := "CLI update required: This endpoint was removed in v0.5.0. Run devdash self-update.\nRun: devdash self-update"
+	if apiErr.Message != expectedMsg {
+		t.Errorf("Message = %q, want %q", apiErr.Message, expectedMsg)
+	}
+}

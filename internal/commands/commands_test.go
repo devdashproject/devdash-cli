@@ -672,41 +672,50 @@ func TestAgentSetupCodexNoOverwrite(t *testing.T) {
 func TestBuildInstructionsSharedCore(t *testing.T) {
 	out := buildInstructions("test-pid", "push", agentConfig{})
 
-	// Core principles
-	if !strings.Contains(out, "Be a capture reflex") {
-		t.Error("shared core should contain capture reflex principle")
+	// Workflow section
+	if !strings.Contains(out, "The Workflow") {
+		t.Error("shared core should contain The Workflow section")
 	}
-	if !strings.Contains(out, "Issue-first") {
-		t.Error("shared core should contain issue-first principle")
+	if !strings.Contains(out, "devdash create --title") {
+		t.Error("shared core should contain create workflow step")
 	}
-	if !strings.Contains(out, "One issue per logical unit") {
-		t.Error("shared core should contain one-issue-per-unit principle")
+	if !strings.Contains(out, "devdash update <id> --status=in_progress") {
+		t.Error("shared core should contain update workflow step")
 	}
 
 	// Rules
-	if !strings.Contains(out, "Create an issue before starting work") {
-		t.Error("shared core should contain rule 1")
+	if !strings.Contains(out, "Issue-first") {
+		t.Error("shared core should contain Issue-first rule")
 	}
-	if !strings.Contains(out, "Never run git and devdash close in parallel") {
-		t.Error("shared core should contain parallel execution warning")
+	if !strings.Contains(out, "Capture reflex") {
+		t.Error("shared core should contain Capture reflex rule")
 	}
 	if !strings.Contains(out, "Close after push") {
 		t.Error("shared core should respect closeOn parameter")
 	}
+	if !strings.Contains(out, "Never run git and devdash close in parallel") {
+		t.Error("shared core should contain parallel execution warning")
+	}
 
-	// Completing work
+	// Close summaries
+	if !strings.Contains(out, "Close Summaries") {
+		t.Error("shared core should contain Close Summaries section")
+	}
 	if !strings.Contains(out, "--pr=URL") {
 		t.Error("shared core should mention --pr=URL on close")
 	}
 
-	// On-demand references
-	if !strings.Contains(out, "devdash help cli") {
-		t.Error("shared core should contain on-demand help references")
+	// Quick reference
+	if !strings.Contains(out, "Quick Reference") {
+		t.Error("shared core should contain Quick Reference section")
+	}
+	if !strings.Contains(out, "devdash ready") {
+		t.Error("shared core should mention devdash ready in quick ref")
 	}
 
-	// Session startup
-	if !strings.Contains(out, "devdash prime") {
-		t.Error("shared core should contain session startup instruction")
+	// On-demand references (without Session Startup)
+	if !strings.Contains(out, "devdash help cli") {
+		t.Error("shared core should contain on-demand help references")
 	}
 }
 
@@ -726,16 +735,17 @@ func TestBuildInstructionsPreamblePostamble(t *testing.T) {
 		Postamble: "POSTAMBLE_MARKER",
 	})
 	preambleIdx := strings.Index(out, "PREAMBLE_MARKER")
-	coreIdx := strings.Index(out, "Core Principles")
+	coreIdx := strings.Index(out, "The Workflow")
 	postambleIdx := strings.Index(out, "POSTAMBLE_MARKER")
 
-	if preambleIdx == -1 || coreIdx == -1 || postambleIdx == -1 {
-		t.Fatal("output should contain preamble, core, and postamble")
+	if preambleIdx == -1 || coreIdx == -1 {
+		t.Fatal("output should contain preamble and core")
 	}
 	if preambleIdx >= coreIdx {
 		t.Error("preamble should appear before core")
 	}
-	if coreIdx >= postambleIdx {
+	// postamble is optional (can be empty), so check if present it comes after core
+	if postambleIdx != -1 && coreIdx >= postambleIdx {
 		t.Error("core should appear before postamble")
 	}
 }
@@ -756,12 +766,15 @@ func TestAllTemplatesShareCore(t *testing.T) {
 
 	// All three must contain the same core content
 	coreStrings := []string{
-		"Be a capture reflex",
-		"Create an issue before starting work. No exceptions.",
+		"The Workflow",
+		"Issue-first",
+		"Capture reflex",
+		"devdash create --title",
+		"devdash update <id> --status=in_progress",
 		"Never run git and devdash close in parallel",
 		"Close after push",
 		"devdash help cli",
-		"devdash prime",
+		"Quick Reference",
 	}
 	for _, s := range coreStrings {
 		if !strings.Contains(string(claude), s) {
@@ -795,11 +808,14 @@ func TestSetupClaudeWrite(t *testing.T) {
 	if !strings.Contains(content, "devdash:agent-instructions") {
 		t.Error("should contain agent-instructions markers")
 	}
-	if !strings.Contains(content, "TodoWrite") {
-		t.Error("Claude template should mention TodoWrite disambiguation")
+	if !strings.Contains(content, "DevDash — Task Tracking") {
+		t.Error("Claude template should contain task tracking header")
 	}
 	if !strings.Contains(content, "test-pid") {
 		t.Error("should contain project ID")
+	}
+	if !strings.Contains(content, "Quick Reference") {
+		t.Error("Claude template should contain Quick Reference section")
 	}
 }
 
