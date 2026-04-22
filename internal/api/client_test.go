@@ -145,8 +145,8 @@ func TestClientUpgradeMessage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(410)
 		json.NewEncoder(w).Encode(map[string]string{
-			"error":            "gone",
-			"upgrade_message":  "This endpoint was removed in v0.5.0. Run devdash self-update.",
+			"error":           "gone",
+			"upgrade_message": "This endpoint was removed in v0.5.0. Run devdash self-update.",
 		})
 	}))
 	defer server.Close()
