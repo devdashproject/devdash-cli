@@ -203,6 +203,12 @@ type CloseBeadRequest struct {
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 }
 
+// MoveBeadRequest is the body for POST /beads/{id}/move.
+type MoveBeadRequest struct {
+	ProjectID       string `json:"projectId"`
+	TargetProjectID string `json:"targetProjectId"`
+}
+
 // BulkCloseRequest is the body for POST /beads/bulk/close.
 type BulkCloseRequest struct {
 	ProjectID string          `json:"projectId"`

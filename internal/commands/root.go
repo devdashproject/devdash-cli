@@ -91,6 +91,7 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	rootCmd.AddCommand(newUpdateCmd(deps))
 	rootCmd.AddCommand(newCloseCmd(deps))
 	rootCmd.AddCommand(newListCmd(deps))
+	rootCmd.AddCommand(newMoveCmd(deps))
 	rootCmd.AddCommand(newReportCmd(deps))
 	rootCmd.AddCommand(newBlockedCmd(deps))
 	rootCmd.AddCommand(newStaleCmd(deps))
