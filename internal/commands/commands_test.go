@@ -149,6 +149,14 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 		json.NewEncoder(w).Encode(map[string]string{"deleted": "ok"})
 	})
 
+	mux.HandleFunc("/api/auth/me", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(apiPkg.CurrentUser{
+			ID:    "test-user-id",
+			Email: "test@example.com",
+			Name:  "Test User",
+		})
+	})
+
 	return mux
 }
 
@@ -375,6 +383,26 @@ func TestListCommandStatusFilter(t *testing.T) {
 	}
 	if strings.Contains(out, "Ready task") {
 		t.Errorf("should not contain pending")
+	}
+}
+
+func TestListCommandMineFilter(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("list", "--mine")
+	if err != nil {
+		t.Fatalf("list --mine failed: %v", err)
+	}
+	if !strings.Contains(out, "Ready task") {
+		t.Errorf("should contain Ready task assigned to test user, got: %s", out)
+	}
+	if !strings.Contains(out, "In progress") {
+		t.Errorf("should contain In progress assigned to test user, got: %s", out)
+	}
+	if strings.Contains(out, "Blocked task") {
+		t.Errorf("should not contain tasks assigned to other users")
+	}
+	if strings.Contains(out, "Thought item") {
+		t.Errorf("should not contain tasks assigned to other users")
 	}
 }
 
