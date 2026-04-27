@@ -20,7 +20,7 @@ func TestClientGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	// Override BaseURL to skip /api prefix for this test
 	client.BaseURL = server.URL
 
@@ -53,7 +53,7 @@ func TestClientPost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	data, err := client.Do("POST", "", map[string]string{"subject": "Test"})
@@ -75,7 +75,7 @@ func TestClientAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "/missing", nil)
@@ -105,7 +105,7 @@ func TestClientNoToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "")
+	client := New(server.URL, "", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "", nil)
@@ -151,7 +151,7 @@ func TestClientUpgradeMessage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "/deprecated", nil)

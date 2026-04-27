@@ -20,14 +20,16 @@ const (
 type Client struct {
 	BaseURL    string
 	Token      string
+	Version    string
 	HTTPClient *http.Client
 }
 
 // New creates an API client.
-func New(baseURL, token string) *Client {
+func New(baseURL, token, version string) *Client {
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		Token:   token,
+		Version: version,
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -73,6 +75,7 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "devdash-cli-go/"+c.Version)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {

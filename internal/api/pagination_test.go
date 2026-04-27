@@ -20,7 +20,7 @@ func TestFetchAllSinglePage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "token")
+	client := New(server.URL, "token", "test")
 	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")
@@ -54,7 +54,7 @@ func TestFetchAllMultiplePages(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "token")
+	client := New(server.URL, "token", "test")
 	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")
@@ -80,7 +80,7 @@ func TestFetchAllPlainArray(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "token")
+	client := New(server.URL, "token", "test")
 	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")

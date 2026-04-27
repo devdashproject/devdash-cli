@@ -31,7 +31,7 @@ func newTestEnv(t *testing.T, beads []apiPkg.Bead) func(args ...string) (string,
 			CloseGate:   "push",
 			ConfigDir:   t.TempDir(),
 		},
-		Client: apiPkg.New(server.URL, "test-token"),
+		Client: apiPkg.New(server.URL, "test-token", Version),
 	}
 
 	return func(args ...string) (string, error) {

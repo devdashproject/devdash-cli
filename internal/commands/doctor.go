@@ -63,7 +63,7 @@ configuration and environment issues in one shot.`,
 
 			if c != nil && c.Token != "" {
 				fmt.Printf("\nTesting API connectivity to %s...\n", c.APIURL)
-				testClient := api.New(c.APIURL, c.Token)
+				testClient := api.New(c.APIURL, c.Token, Version)
 				_, err := testClient.Get("/projects")
 				if err != nil {
 					fmt.Printf("✗ API: %v\n", err)

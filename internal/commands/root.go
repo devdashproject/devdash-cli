@@ -26,7 +26,7 @@ func (d *Deps) requireAuth() error {
 		return err
 	}
 	if d.Client == nil {
-		d.Client = api.New(d.Cfg.APIURL, d.Cfg.Token)
+		d.Client = api.New(d.Cfg.APIURL, d.Cfg.Token, Version)
 	}
 	return nil
 }
@@ -72,7 +72,7 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 			}
 
 			if deps.Cfg.Token != "" {
-				deps.Client = api.New(deps.Cfg.APIURL, deps.Cfg.Token)
+				deps.Client = api.New(deps.Cfg.APIURL, deps.Cfg.Token, Version)
 			}
 
 			return nil

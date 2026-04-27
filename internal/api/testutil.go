@@ -47,7 +47,7 @@ func MockServer(t *testing.T, routes []MockRoute) (*httptest.Server, *Client) {
 	t.Cleanup(server.Close)
 
 	// Client expects BaseURL + "/api" + path, so strip /api from mock
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	// Override: the mock server doesn't have /api prefix, so adjust
 	client.BaseURL = server.URL + "/api"
 
