@@ -172,3 +172,29 @@ func TestClientUpgradeMessage(t *testing.T) {
 		t.Errorf("Message = %q, want %q", apiErr.Message, expectedMsg)
 	}
 }
+
+func TestClientUserAgent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua := r.Header.Get("User-Agent")
+		if ua != "devdash-cli-go/0.4.0" {
+			t.Errorf("User-Agent = %q, want %q", ua, "devdash-cli-go/0.4.0")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "0.4.0")
+	client.BaseURL = server.URL
+
+	data, err := client.Do("GET", "", nil)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+
+	var result map[string]string
+	json.Unmarshal(data, &result)
+	if result["status"] != "ok" {
+		t.Errorf("got %v", result)
+	}
+}
