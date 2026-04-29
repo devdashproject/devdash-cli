@@ -114,3 +114,81 @@ func TestResolveWhitespace(t *testing.T) {
 		t.Errorf("got %q", result)
 	}
 }
+
+var testProjects = []api.Project{
+	{ID: "proj-aaaa-0000-0000-0000-0000000000aa", Name: "Project Alpha"},
+	{ID: "proj-bbbb-0000-0000-0000-0000000000bb", Name: "Project Beta"},
+	{ID: "proj-bbbb-1111-0000-0000-0000000000cc", Name: "Project Gamma"},
+	{ID: "test-project-id", Name: "Test Project"},
+}
+
+func TestResolveProjectIDFullUUID(t *testing.T) {
+	uuid := "proj-aaaa-0000-0000-0000-0000000000aa"
+	result, err := resolveProjectPrefix(uuid, testProjects)
+	if err != nil {
+		t.Fatalf("resolveProjectPrefix(%q) failed: %v", uuid, err)
+	}
+	if result != uuid {
+		t.Errorf("resolveProjectPrefix(%q) = %q, want %q", uuid, result, uuid)
+	}
+}
+
+func TestResolveProjectIDPrefix(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"proj-aaaa", "proj-aaaa-0000-0000-0000-0000000000aa"},
+		{"proj-a", "proj-aaaa-0000-0000-0000-0000000000aa"},
+		{"test", "test-project-id"},
+		{"TEST", "test-project-id"}, // case insensitive
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			result, err := resolveProjectPrefix(tc.input, testProjects)
+			if err != nil {
+				t.Fatalf("resolveProjectPrefix(%q) failed: %v", tc.input, err)
+			}
+			if result != tc.want {
+				t.Errorf("resolveProjectPrefix(%q) = %q, want %q", tc.input, result, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveProjectIDAmbiguous(t *testing.T) {
+	_, err := resolveProjectPrefix("proj-bbbb", testProjects)
+	if err == nil {
+		t.Fatal("resolveProjectPrefix(\"proj-bbbb\") should fail with ambiguous prefix")
+	}
+	if !contains(err.Error(), "ambiguous") {
+		t.Errorf("expected 'ambiguous' in error, got: %v", err)
+	}
+}
+
+func TestResolveProjectIDNotFound(t *testing.T) {
+	_, err := resolveProjectPrefix("zzzzzzzz", testProjects)
+	if err == nil {
+		t.Fatal("resolveProjectPrefix(\"zzzzzzzz\") should fail")
+	}
+	if !contains(err.Error(), "no project found") {
+		t.Errorf("expected 'no project found' in error, got: %v", err)
+	}
+}
+
+func TestResolveProjectIDEmpty(t *testing.T) {
+	_, err := resolveProjectPrefix("", testProjects)
+	if err == nil {
+		t.Fatal("resolveProjectPrefix(\"\") should fail")
+	}
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i < len(s)-len(substr)+1; i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

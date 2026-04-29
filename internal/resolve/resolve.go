@@ -87,6 +87,47 @@ func resolvePrefix(prefix string, beads []api.Bead) (string, error) {
 	}
 }
 
+// ProjectID resolves a project ID prefix to a full UUID.
+// Full UUIDs are returned as-is (no API call). Shorter inputs
+// are resolved against GET /projects.
+func ProjectID(input string, client *api.Client) (string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", fmt.Errorf("empty project ID")
+	}
+	if len(input) == 36 && strings.Count(input, "-") == 4 {
+		return input, nil
+	}
+	projects, err := api.FetchAll[api.Project](client, "/projects")
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch projects for ID resolution: %w", err)
+	}
+	return resolveProjectPrefix(input, projects)
+}
+
+func resolveProjectPrefix(prefix string, projects []api.Project) (string, error) {
+	lower := strings.ToLower(prefix)
+	var matches []api.Project
+	for _, p := range projects {
+		if strings.HasPrefix(strings.ToLower(p.ID), lower) {
+			matches = append(matches, p)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("no project found with prefix %q — run 'devdash project list' to see available projects", prefix)
+	case 1:
+		return matches[0].ID, nil
+	default:
+		names := make([]string, len(matches))
+		for i, m := range matches {
+			names[i] = fmt.Sprintf("%s (%s)", m.ID[:8], m.Name)
+		}
+		return "", fmt.Errorf("ambiguous project prefix %q matches %d projects: %s — use a longer prefix",
+			prefix, len(matches), strings.Join(names, ", "))
+	}
+}
+
 func isHexString(s string) bool {
 	for _, c := range s {
 		isDigit := c >= '0' && c <= '9'

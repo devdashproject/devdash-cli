@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
@@ -12,24 +13,41 @@ func newMoveCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <id>",
 		Short: "Move an issue to a different project",
-		Long: `Move an issue from the current project to a target project.
+		Long: `Move an issue from one project to another.
 
 The issue's full history, comments, and metadata are preserved by the
-server during the move. Use --to to specify the target project ID (full
-UUID or unambiguous prefix accepted by the server).
+server during the move.
 
-The current project is determined by --project or the .devdash file,
-as with all other commands.`,
+Source project: determined by --from, then --project, then DD_PROJECT_ID,
+then the .devdash file. Use --from explicitly when the issue lives in a
+different project than the current directory.
+
+Both --from and --to accept full UUIDs or unambiguous short prefixes.
+Run 'devdash project list' to find project IDs.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sourcePID, err := d.requireProject(cmd)
-			if err != nil {
-				return err
+			// Resolve source project: --from takes priority over global --project/env/.devdash
+			var sourcePID string
+			var err error
+			if fromVal, _ := cmd.Flags().GetString("from"); fromVal != "" {
+				sourcePID, err = resolve.ProjectID(fromVal, d.Client)
+				if err != nil {
+					return fmt.Errorf("source project: %w", err)
+				}
+			} else {
+				sourcePID, err = d.requireProject(cmd)
+				if err != nil {
+					return err
+				}
 			}
 
-			targetPID, _ := cmd.Flags().GetString("to")
-			if targetPID == "" {
-				return fmt.Errorf("--to is required: specify the target project ID")
+			rawTo, _ := cmd.Flags().GetString("to")
+			if rawTo == "" {
+				return fmt.Errorf("--to is required: specify the target project ID or prefix")
+			}
+			targetPID, err := resolve.ProjectID(rawTo, d.Client)
+			if err != nil {
+				return err
 			}
 
 			if sourcePID == targetPID {
@@ -38,7 +56,9 @@ as with all other commands.`,
 
 			uuid, err := resolve.IDWithFetch(args[0], d.Client, sourcePID)
 			if err != nil {
-				return err
+				return fmt.Errorf("%w\n\nHint: the issue may belong to a different project.\n"+
+					"Set the source with --from=<project-id> or DD_PROJECT_ID=<project-id>.\n"+
+					"Run 'devdash project list' to find project IDs.", err)
 			}
 
 			req := api.MoveBeadRequest{
@@ -47,6 +67,10 @@ as with all other commands.`,
 			}
 			_, err = d.Client.Post("/beads/"+uuid+"/move", req)
 			if err != nil {
+				var apiErr *api.APIError
+				if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
+					return fmt.Errorf("target project %s not found — verify with 'devdash project list'", shortID(targetPID))
+				}
 				return err
 			}
 
@@ -54,6 +78,7 @@ as with all other commands.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("to", "", "Target project ID (required; full UUID or server-accepted prefix)")
+	cmd.Flags().String("to", "", "Target project ID (full UUID or short prefix)")
+	cmd.Flags().String("from", "", "Source project ID (overrides --project / DD_PROJECT_ID)")
 	return cmd
 }

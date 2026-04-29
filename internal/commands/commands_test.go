@@ -314,7 +314,7 @@ func TestCloseCommandBulk(t *testing.T) {
 func TestMoveCommand(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	out, err := run("move", beads[0].ID, "--to=target-project-id-0000000000001")
+	out, err := run("move", beads[0].ID, "--to=proj-0002")
 	if err != nil {
 		t.Fatalf("move failed: %v", err)
 	}
@@ -326,7 +326,7 @@ func TestMoveCommand(t *testing.T) {
 func TestMoveCommandShortID(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	out, err := run("move", beads[0].ID[:8], "--to=target-project-id-0000000000001")
+	out, err := run("move", beads[0].ID[:8], "--to=proj-0002")
 	if err != nil {
 		t.Fatalf("move with short ID failed: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestMoveCommandMissingTo(t *testing.T) {
 func TestMoveCommandSameProject(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	_, err := run("move", beads[0].ID, "--to=test-project-id")
+	_, err := run("move", beads[0].ID, "--to=test")
 	if err == nil || !strings.Contains(err.Error(), "same") {
 		t.Errorf("expected same-project error, got: %v", err)
 	}
@@ -355,9 +355,57 @@ func TestMoveCommandSameProject(t *testing.T) {
 
 func TestMoveCommandNotFound(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
-	_, err := run("move", "zzz-unknown-prefix", "--to=target-project-id-0000000000001")
+	_, err := run("move", "zzz-unknown-prefix", "--to=proj-0001")
 	if err == nil {
 		t.Fatal("move with unknown ID should fail")
+	}
+}
+
+func TestMoveCommandShortToPrefix(t *testing.T) {
+	beads := apiPkg.SampleBeads()
+	run := newTestEnv(t, beads)
+	out, err := run("move", beads[0].ID, "--to=proj-0001")
+	if err != nil {
+		t.Fatalf("move with short --to failed: %v", err)
+	}
+	if !strings.Contains(out, "Moved:") {
+		t.Errorf("want 'Moved:' in output, got: %s", out)
+	}
+}
+
+func TestMoveCommandFromFlag(t *testing.T) {
+	beads := apiPkg.SampleBeads()
+	run := newTestEnv(t, beads)
+	out, err := run("move", beads[0].ID, "--from=test-project-id", "--to=proj-0001")
+	if err != nil {
+		t.Fatalf("move with --from failed: %v", err)
+	}
+	if !strings.Contains(out, "Moved:") {
+		t.Errorf("want 'Moved:' in output, got: %s", out)
+	}
+}
+
+func TestMoveCommandUnknownTo(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", apiPkg.SampleBeads()[0].ID, "--to=zzzzzzzz")
+	if err == nil || !strings.Contains(err.Error(), "no project found") {
+		t.Errorf("expected 'no project found' error, got: %v", err)
+	}
+}
+
+func TestMoveCommandAmbiguousTo(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", apiPkg.SampleBeads()[0].ID, "--to=proj")
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Errorf("expected 'ambiguous' error, got: %v", err)
+	}
+}
+
+func TestMoveCommandWrongSourceProject(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", "zzzzzzzz", "--to=proj-0001")
+	if err == nil || !strings.Contains(err.Error(), "different project") {
+		t.Errorf("expected source project hint in error, got: %v", err)
 	}
 }
 

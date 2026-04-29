@@ -109,7 +109,8 @@ func SampleBeads() []Bead {
 // SampleProjects returns test project data.
 func SampleProjects() []Project {
 	return []Project{
-		{ID: "proj-0001-0000-0000-000000000001", Name: "test-project", GithubRepo: "user/test-project"},
-		{ID: "proj-0002-0000-0000-000000000002", Name: "another-project"},
+		{ID: "test-project-id", Name: "test-project", GithubRepo: "user/test"},
+		{ID: "proj-0001-0000-0000-000000000001", Name: "project-one"},
+		{ID: "proj-0002-0000-0000-000000000002", Name: "project-two"},
 	}
 }
