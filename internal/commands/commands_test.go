@@ -31,7 +31,7 @@ func newTestEnv(t *testing.T, beads []apiPkg.Bead) func(args ...string) (string,
 			CloseGate:   "push",
 			ConfigDir:   t.TempDir(),
 		},
-		Client: apiPkg.New(server.URL, "test-token"),
+		Client: apiPkg.New(server.URL, "test-token", Version),
 	}
 
 	return func(args ...string) (string, error) {
@@ -149,6 +149,14 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 		json.NewEncoder(w).Encode(map[string]string{"deleted": "ok"})
 	})
 
+	mux.HandleFunc("/api/auth/me", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(apiPkg.CurrentUser{
+			ID:    "test-user-id",
+			Email: "test@example.com",
+			Name:  "Test User",
+		})
+	})
+
 	return mux
 }
 
@@ -217,9 +225,13 @@ func TestCreateCommand(t *testing.T) {
 func TestCreateCommandMissingTitle(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("create")
-	if err == nil && !strings.Contains(out, "--title is required") {
-		t.Fatal("create without --title should fail")
+	if err == nil {
+		t.Fatal("create without --subject or --title should fail")
 	}
+	if !strings.Contains(err.Error(), "--subject or --title is required") {
+		t.Fatalf("should explain required subject/title, got: %v", err)
+	}
+	_ = out
 }
 
 func TestCreateCommandDashTitle(t *testing.T) {
@@ -231,8 +243,8 @@ func TestCreateCommandDashTitle(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot start with '-'") {
 		t.Errorf("should mention cannot start with '-', got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "--title=") {
-		t.Errorf("should suggest --title= syntax, got: %v", err)
+	if !strings.Contains(err.Error(), "--subject=") {
+		t.Errorf("should suggest --subject= syntax, got: %v", err)
 	}
 }
 
@@ -306,7 +318,7 @@ func TestCloseCommandBulk(t *testing.T) {
 func TestMoveCommand(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	out, err := run("move", beads[0].ID, "--to=target-project-id-0000000000001")
+	out, err := run("move", beads[0].ID, "--to=proj-0002")
 	if err != nil {
 		t.Fatalf("move failed: %v", err)
 	}
@@ -318,7 +330,7 @@ func TestMoveCommand(t *testing.T) {
 func TestMoveCommandShortID(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	out, err := run("move", beads[0].ID[:8], "--to=target-project-id-0000000000001")
+	out, err := run("move", beads[0].ID[:8], "--to=proj-0002")
 	if err != nil {
 		t.Fatalf("move with short ID failed: %v", err)
 	}
@@ -339,7 +351,7 @@ func TestMoveCommandMissingTo(t *testing.T) {
 func TestMoveCommandSameProject(t *testing.T) {
 	beads := apiPkg.SampleBeads()
 	run := newTestEnv(t, beads)
-	_, err := run("move", beads[0].ID, "--to=test-project-id")
+	_, err := run("move", beads[0].ID, "--to=test")
 	if err == nil || !strings.Contains(err.Error(), "same") {
 		t.Errorf("expected same-project error, got: %v", err)
 	}
@@ -347,9 +359,57 @@ func TestMoveCommandSameProject(t *testing.T) {
 
 func TestMoveCommandNotFound(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
-	_, err := run("move", "zzz-unknown-prefix", "--to=target-project-id-0000000000001")
+	_, err := run("move", "zzz-unknown-prefix", "--to=proj-0001")
 	if err == nil {
 		t.Fatal("move with unknown ID should fail")
+	}
+}
+
+func TestMoveCommandShortToPrefix(t *testing.T) {
+	beads := apiPkg.SampleBeads()
+	run := newTestEnv(t, beads)
+	out, err := run("move", beads[0].ID, "--to=proj-0001")
+	if err != nil {
+		t.Fatalf("move with short --to failed: %v", err)
+	}
+	if !strings.Contains(out, "Moved:") {
+		t.Errorf("want 'Moved:' in output, got: %s", out)
+	}
+}
+
+func TestMoveCommandFromFlag(t *testing.T) {
+	beads := apiPkg.SampleBeads()
+	run := newTestEnv(t, beads)
+	out, err := run("move", beads[0].ID, "--from=test-project-id", "--to=proj-0001")
+	if err != nil {
+		t.Fatalf("move with --from failed: %v", err)
+	}
+	if !strings.Contains(out, "Moved:") {
+		t.Errorf("want 'Moved:' in output, got: %s", out)
+	}
+}
+
+func TestMoveCommandUnknownTo(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", apiPkg.SampleBeads()[0].ID, "--to=zzzzzzzz")
+	if err == nil || !strings.Contains(err.Error(), "no project found") {
+		t.Errorf("expected 'no project found' error, got: %v", err)
+	}
+}
+
+func TestMoveCommandAmbiguousTo(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", apiPkg.SampleBeads()[0].ID, "--to=proj")
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Errorf("expected 'ambiguous' error, got: %v", err)
+	}
+}
+
+func TestMoveCommandWrongSourceProject(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	_, err := run("move", "zzzzzzzz", "--to=proj-0001")
+	if err == nil || !strings.Contains(err.Error(), "different project") {
+		t.Errorf("expected source project hint in error, got: %v", err)
 	}
 }
 
@@ -375,6 +435,26 @@ func TestListCommandStatusFilter(t *testing.T) {
 	}
 	if strings.Contains(out, "Ready task") {
 		t.Errorf("should not contain pending")
+	}
+}
+
+func TestListCommandMineFilter(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("list", "--mine")
+	if err != nil {
+		t.Fatalf("list --mine failed: %v", err)
+	}
+	if !strings.Contains(out, "Ready task") {
+		t.Errorf("should contain Ready task assigned to test user, got: %s", out)
+	}
+	if !strings.Contains(out, "In progress") {
+		t.Errorf("should contain In progress assigned to test user, got: %s", out)
+	}
+	if strings.Contains(out, "Blocked task") {
+		t.Errorf("should not contain tasks assigned to other users")
+	}
+	if strings.Contains(out, "Thought item") {
+		t.Errorf("should not contain tasks assigned to other users")
 	}
 }
 
@@ -764,8 +844,17 @@ func TestBuildInstructionsSharedCore(t *testing.T) {
 	}
 
 	// On-demand references (without Session Startup)
+	if !strings.Contains(out, "Session Startup") {
+		t.Error("shared core should contain Session Startup section")
+	}
 	if !strings.Contains(out, "devdash help cli") {
 		t.Error("shared core should contain on-demand help references")
+	}
+	if !strings.Contains(out, "Treat `devdash prime` as sufficient session-start DevDash orientation") {
+		t.Error("shared core should discourage redundant startup orientation commands")
+	}
+	if !strings.Contains(out, "devdash list --status=pending") {
+		t.Error("shared core should name pending list as a redundant startup command")
 	}
 }
 
@@ -823,6 +912,8 @@ func TestAllTemplatesShareCore(t *testing.T) {
 		"devdash update <id> --status=in_progress",
 		"Never run git and devdash close in parallel",
 		"Close after push",
+		"Session Startup",
+		"Treat `devdash prime` as sufficient session-start DevDash orientation",
 		"devdash help cli",
 		"Quick Reference",
 	}

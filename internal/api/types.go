@@ -243,3 +243,10 @@ type CommentRequest struct {
 	ProjectID string `json:"projectId"`
 	Content   string `json:"content"`
 }
+
+// CurrentUser represents the response from GET /auth/me.
+type CurrentUser struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Name  string `json:"name,omitempty"`
+}

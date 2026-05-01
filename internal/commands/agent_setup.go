@@ -205,6 +205,18 @@ devdash project list                                   List all projects
 
 Run `+"`devdash help cli`"+` for the full reference — deps, activity, report, dispatch, and more.
 
+## Session Startup
+
+Run `+"`devdash prime`"+` at the start of every new session and after any context loss
+(compaction, clear, handoff). It provides dynamic project context — project health,
+command quirks, and output format guidance — that these static instructions cannot.
+
+Treat `+"`devdash prime`"+` as sufficient session-start DevDash orientation. Do not also run
+`+"`devdash stats`"+`, `+"`devdash ready`"+`, `+"`devdash list --status=pending`"+`, or similar broad
+inventory commands just to get oriented. Run those commands only when the user asks
+about project status, choosing the next issue, triage, backlog health, or when the
+current task explicitly depends on that information.
+
 ## On-Demand Reference
 
 - `+"`devdash help workflow`"+` — Decomposition patterns, bead relationships
@@ -273,7 +285,8 @@ Project ID: %s
 
 	postamble := `## Agent-Specific Instructions
 
-- Minimize redundant startup work after ` + "`devdash prime`" + `. Don't run broad repo scans or repeated discovery commands unless the current request needs them.
+- Minimize redundant startup work after ` + "`devdash prime`" + `; continue directly into the user's request using the issue-first workflow.
+- Don't run broad repo scans or repeated discovery commands unless the current request needs them.
 - Read only the context needed for the current request. Prefer targeted repo reads over whole-repo exploration when the task is narrow.
 - Preserve existing user changes. Do not revert unrelated modifications or overwrite work you did not make.
 - Run the narrowest verification that meaningfully covers the change, then summarize the result for the user.`

@@ -20,7 +20,7 @@ func TestClientGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	// Override BaseURL to skip /api prefix for this test
 	client.BaseURL = server.URL
 
@@ -53,7 +53,7 @@ func TestClientPost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	data, err := client.Do("POST", "", map[string]string{"subject": "Test"})
@@ -75,7 +75,7 @@ func TestClientAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "/missing", nil)
@@ -105,7 +105,7 @@ func TestClientNoToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "")
+	client := New(server.URL, "", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "", nil)
@@ -151,7 +151,7 @@ func TestClientUpgradeMessage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	client.BaseURL = server.URL
 
 	_, err := client.Do("GET", "/deprecated", nil)
@@ -170,5 +170,31 @@ func TestClientUpgradeMessage(t *testing.T) {
 	expectedMsg := "CLI update required: This endpoint was removed in v0.5.0. Run devdash self-update.\nRun: devdash self-update"
 	if apiErr.Message != expectedMsg {
 		t.Errorf("Message = %q, want %q", apiErr.Message, expectedMsg)
+	}
+}
+
+func TestClientUserAgent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua := r.Header.Get("User-Agent")
+		if ua != "devdash-cli-go/0.4.0" {
+			t.Errorf("User-Agent = %q, want %q", ua, "devdash-cli-go/0.4.0")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "0.4.0")
+	client.BaseURL = server.URL
+
+	data, err := client.Do("GET", "", nil)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+
+	var result map[string]string
+	json.Unmarshal(data, &result)
+	if result["status"] != "ok" {
+		t.Errorf("got %v", result)
 	}
 }

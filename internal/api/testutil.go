@@ -47,7 +47,7 @@ func MockServer(t *testing.T, routes []MockRoute) (*httptest.Server, *Client) {
 	t.Cleanup(server.Close)
 
 	// Client expects BaseURL + "/api" + path, so strip /api from mock
-	client := New(server.URL, "test-token")
+	client := New(server.URL, "test-token", "test")
 	// Override: the mock server doesn't have /api prefix, so adjust
 	client.BaseURL = server.URL + "/api"
 
@@ -66,15 +66,18 @@ func SampleBeads() []Bead {
 		{
 			ID: "aaaa0000-0000-0000-0000-000000000001", LocalBeadID: "test-1",
 			Subject: "Ready task", Status: "pending", Priority: 1, BeadType: "task",
+			AssignedTo: "test-user-id",
 		},
 		{
 			ID: "bbbb0000-0000-0000-0000-000000000002", LocalBeadID: "test-2",
 			Subject: "Blocked task", Status: "pending", Priority: 2, BeadType: "task",
-			BlockedBy: []string{"cccc0000-0000-0000-0000-000000000003"},
+			BlockedBy:  []string{"cccc0000-0000-0000-0000-000000000003"},
+			AssignedTo: "other-user-id",
 		},
 		{
 			ID: "cccc0000-0000-0000-0000-000000000003", LocalBeadID: "test-3",
 			Subject: "In progress", Status: "in_progress", Priority: 0, BeadType: "feature",
+			AssignedTo: "test-user-id",
 		},
 		{
 			ID: "dddd0000-0000-0000-0000-000000000004", LocalBeadID: "test-4",
@@ -83,11 +86,13 @@ func SampleBeads() []Bead {
 		{
 			ID: "eeee0000-0000-0000-0000-000000000005", LocalBeadID: "test-5",
 			Subject: "Thought item", Status: "pending", Priority: 3, BeadType: "thought",
+			AssignedTo: "other-user-id",
 		},
 		{
 			ID: "ffff0000-0000-0000-0000-000000000006", LocalBeadID: "test-6",
 			Subject: "Stale task", Status: "in_progress", Priority: 2, BeadType: "task",
 			StaleMinutes: 45, StaleSince: "2026-03-27T10:00:00Z",
+			AssignedTo: "test-user-id",
 		},
 		{
 			ID: "1111aaaa-0000-0000-0000-000000000007", LocalBeadID: "test-7",
@@ -104,7 +109,8 @@ func SampleBeads() []Bead {
 // SampleProjects returns test project data.
 func SampleProjects() []Project {
 	return []Project{
-		{ID: "proj-0001-0000-0000-000000000001", Name: "test-project", GithubRepo: "user/test-project"},
-		{ID: "proj-0002-0000-0000-000000000002", Name: "another-project"},
+		{ID: "test-project-id", Name: "test-project", GithubRepo: "user/test"},
+		{ID: "proj-0001-0000-0000-000000000001", Name: "project-one"},
+		{ID: "proj-0002-0000-0000-000000000002", Name: "project-two"},
 	}
 }

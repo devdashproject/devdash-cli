@@ -18,8 +18,8 @@ func newListCmd(d *Deps) *cobra.Command {
 
 Results can be narrowed with --status (pending, in_progress, completed),
 --since (accepts relative durations like 2h, 3d, 1w or an absolute
-YYYY-MM-DD date filtering on updatedAt), and --parent (show only children
-of a specific bead ID).
+YYYY-MM-DD date filtering on updatedAt), --parent (show only children
+of a specific bead ID), and --mine (show only beads assigned to you).
 
 When no issues match the filters, a message is printed to stderr.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -36,6 +36,7 @@ When no issues match the filters, a message is printed to stderr.`,
 			statusFilter, _ := cmd.Flags().GetString("status")
 			since, _ := cmd.Flags().GetString("since")
 			parent, _ := cmd.Flags().GetString("parent")
+			mine, _ := cmd.Flags().GetBool("mine")
 
 			var sinceFilter string
 			if since != "" {
@@ -43,6 +44,15 @@ When no issues match the filters, a message is printed to stderr.`,
 				if err != nil {
 					return err
 				}
+			}
+
+			var currentUserID string
+			if mine {
+				user, err := api.JSON[api.CurrentUser](d.Client.Get("/auth/me"))
+				if err != nil {
+					return err
+				}
+				currentUserID = user.ID
 			}
 
 			completedIDs := make(map[string]bool)
@@ -61,6 +71,9 @@ When no issues match the filters, a message is printed to stderr.`,
 					continue
 				}
 				if parent != "" && b.ParentBeadID != parent {
+					continue
+				}
+				if mine && b.AssignedTo != currentUserID {
 					continue
 				}
 				filtered = append(filtered, b)
@@ -84,5 +97,6 @@ When no issues match the filters, a message is printed to stderr.`,
 	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, completed")
 	cmd.Flags().String("since", "", "Filter by updatedAt (Nh, Nd, Nw, or YYYY-MM-DD)")
 	cmd.Flags().String("parent", "", "Filter by parent bead ID")
+	cmd.Flags().Bool("mine", false, "Show only issues assigned to you")
 	return cmd
 }

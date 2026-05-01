@@ -16,19 +16,27 @@ func newCreateCmd(d *Deps) *cobra.Command {
 		Short: "Create a new issue",
 		Long: `Create a new issue in the current project.
 
-Requires --title. Optionally set the type (task, bug, feature,
+Requires --subject or --title. Optionally set the type (task, bug, feature,
 enhancement, thought), priority (0=critical through 4=backlog),
 description, parent issue, due date, time estimate, and sort order.
 
 The new issue is created in "pending" status. Use "devdash update"
 to mark it in_progress when you begin work.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			subject, _ := cmd.Flags().GetString("subject")
 			title, _ := cmd.Flags().GetString("title")
-			if title == "" {
-				return fmt.Errorf("--title is required")
+
+			if subject == "" && title == "" {
+				return fmt.Errorf("--subject or --title is required")
 			}
-			if strings.HasPrefix(title, "-") {
-				return fmt.Errorf("title cannot start with '-': %s\nUse --title=\"...\" for titles that might look like flags", title)
+
+			// Prefer --subject, fall back to --title for backwards compatibility
+			if subject == "" {
+				subject = title
+			}
+
+			if strings.HasPrefix(subject, "-") {
+				return fmt.Errorf("subject cannot start with '-': %s\nUse --subject=\"...\" for subjects that might look like flags", subject)
 			}
 
 			pid, err := d.requireProject(cmd)
@@ -45,7 +53,7 @@ to mark it in_progress when you begin work.`,
 
 			req := api.CreateBeadRequest{
 				ProjectID:   pid,
-				Subject:     title,
+				Subject:     subject,
 				Description: description,
 				BeadType:    beadType,
 				Priority:    &priority,
@@ -94,7 +102,8 @@ to mark it in_progress when you begin work.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("title", "", "Issue title (required)")
+	cmd.Flags().String("subject", "", "Issue subject (required)")
+	cmd.Flags().String("title", "", "Issue title (deprecated: use --subject)")
 	cmd.Flags().String("description", "", "Issue description")
 	cmd.Flags().String("type", "task", "Issue type: task, bug, feature, enhancement, thought")
 	cmd.Flags().Int("priority", 2, "Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog")
