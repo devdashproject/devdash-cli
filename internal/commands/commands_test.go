@@ -844,8 +844,17 @@ func TestBuildInstructionsSharedCore(t *testing.T) {
 	}
 
 	// On-demand references (without Session Startup)
+	if !strings.Contains(out, "Session Startup") {
+		t.Error("shared core should contain Session Startup section")
+	}
 	if !strings.Contains(out, "devdash help cli") {
 		t.Error("shared core should contain on-demand help references")
+	}
+	if !strings.Contains(out, "Treat `devdash prime` as sufficient session-start DevDash orientation") {
+		t.Error("shared core should discourage redundant startup orientation commands")
+	}
+	if !strings.Contains(out, "devdash list --status=pending") {
+		t.Error("shared core should name pending list as a redundant startup command")
 	}
 }
 
@@ -903,6 +912,8 @@ func TestAllTemplatesShareCore(t *testing.T) {
 		"devdash update <id> --status=in_progress",
 		"Never run git and devdash close in parallel",
 		"Close after push",
+		"Session Startup",
+		"Treat `devdash prime` as sufficient session-start DevDash orientation",
 		"devdash help cli",
 		"Quick Reference",
 	}
