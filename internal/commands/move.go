@@ -56,9 +56,9 @@ Run 'devdash project list' to find project IDs.`,
 
 			uuid, err := resolve.IDWithFetch(args[0], d.Client, sourcePID)
 			if err != nil {
-				return fmt.Errorf("%w\n\nHint: the issue may belong to a different project.\n"+
-					"Set the source with --from=<project-id> or DD_PROJECT_ID=<project-id>.\n"+
-					"Run 'devdash project list' to find project IDs.", err)
+				return fmt.Errorf("%w\n\nhint: the issue may belong to a different project\n"+
+					"set the source with --from=<project-id> or DD_PROJECT_ID=<project-id>\n"+
+					"run 'devdash project list' to find project IDs", err)
 			}
 
 			req := api.MoveBeadRequest{

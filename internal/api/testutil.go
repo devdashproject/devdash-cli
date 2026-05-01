@@ -71,7 +71,7 @@ func SampleBeads() []Bead {
 		{
 			ID: "bbbb0000-0000-0000-0000-000000000002", LocalBeadID: "test-2",
 			Subject: "Blocked task", Status: "pending", Priority: 2, BeadType: "task",
-			BlockedBy: []string{"cccc0000-0000-0000-0000-000000000003"},
+			BlockedBy:  []string{"cccc0000-0000-0000-0000-000000000003"},
 			AssignedTo: "other-user-id",
 		},
 		{
