@@ -225,9 +225,13 @@ func TestCreateCommand(t *testing.T) {
 func TestCreateCommandMissingTitle(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("create")
-	if err == nil && !strings.Contains(out, "--title is required") {
-		t.Fatal("create without --title should fail")
+	if err == nil {
+		t.Fatal("create without --subject or --title should fail")
 	}
+	if !strings.Contains(err.Error(), "--subject or --title is required") {
+		t.Fatalf("should explain required subject/title, got: %v", err)
+	}
+	_ = out
 }
 
 func TestCreateCommandDashTitle(t *testing.T) {
@@ -239,8 +243,8 @@ func TestCreateCommandDashTitle(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot start with '-'") {
 		t.Errorf("should mention cannot start with '-', got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "--title=") {
-		t.Errorf("should suggest --title= syntax, got: %v", err)
+	if !strings.Contains(err.Error(), "--subject=") {
+		t.Errorf("should suggest --subject= syntax, got: %v", err)
 	}
 }
 
