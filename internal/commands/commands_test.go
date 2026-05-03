@@ -850,8 +850,14 @@ func TestBuildInstructionsSharedCore(t *testing.T) {
 	if !strings.Contains(out, "devdash help cli") {
 		t.Error("shared core should contain on-demand help references")
 	}
-	if !strings.Contains(out, "Treat `devdash prime` as sufficient session-start DevDash orientation") {
-		t.Error("shared core should discourage redundant startup orientation commands")
+	if !strings.Contains(out, "Do not run DevDash inventory commands merely because a new session started") {
+		t.Error("shared core should discourage automatic startup inventory commands")
+	}
+	if !strings.Contains(out, "Run `devdash prime` only after context loss") {
+		t.Error("shared core should constrain prime to recovery or on-demand orientation")
+	}
+	if !strings.Contains(out, "Treat `devdash prime` as sufficient orientation when it is needed") {
+		t.Error("shared core should discourage redundant orientation commands after prime")
 	}
 	if !strings.Contains(out, "devdash list --status=pending") {
 		t.Error("shared core should name pending list as a redundant startup command")
@@ -913,7 +919,8 @@ func TestAllTemplatesShareCore(t *testing.T) {
 		"Never run git and devdash close in parallel",
 		"Close after push",
 		"Session Startup",
-		"Treat `devdash prime` as sufficient session-start DevDash orientation",
+		"Do not run DevDash inventory commands merely because a new session started",
+		"Run `devdash prime` only after context loss",
 		"devdash help cli",
 		"Quick Reference",
 	}

@@ -54,11 +54,17 @@ Run `devdash help cli` for the full reference — deps, activity, report, dispat
 
 ## Session Startup
 
-Run `devdash prime` at the start of every new session and after any context loss
-(compaction, clear, handoff). It provides dynamic project context — project health,
-command quirks, and output format guidance — that these static instructions cannot.
+Do not run DevDash inventory commands merely because a new session started. When the
+user gives you a concrete task, follow the issue-first workflow immediately:
+`devdash create` → `devdash update --status=in_progress` → work.
 
-Treat `devdash prime` as sufficient session-start DevDash orientation. Do not also run
+Run `devdash prime` only after context loss (compaction, clear, handoff), when the
+user asks about project status or what to work on next, or when the current task
+explicitly depends on project-wide context. It provides dynamic project context —
+project health, command quirks, and output format guidance — that these static
+instructions cannot.
+
+Treat `devdash prime` as sufficient orientation when it is needed. Do not also run
 `devdash stats`, `devdash ready`, `devdash list --status=pending`, or similar broad
 inventory commands just to get oriented. Run those commands only when the user asks
 about project status, choosing the next issue, triage, backlog health, or when the
