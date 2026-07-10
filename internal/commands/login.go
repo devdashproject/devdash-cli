@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -11,6 +12,18 @@ import (
 	"github.com/devdashproject/devdash-cli/internal/config"
 	"github.com/spf13/cobra"
 )
+
+// buildCLITokenURL builds the dev-dash cli-token auth URL. When provider is
+// non-empty it's passed through as ?provider=; the server whitelists it
+// server-side (only "github" switches to GitHub login — anything else falls
+// back to Google), so an unknown value is harmless.
+func buildCLITokenURL(apiURL string, port int, nonce, provider string) string {
+	authURL := fmt.Sprintf("%s/api/auth/cli-token?port=%d&nonce=%s", apiURL, port, nonce)
+	if provider != "" {
+		authURL += "&provider=" + url.QueryEscape(provider)
+	}
+	return authURL
+}
 
 func newLoginCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
@@ -24,7 +37,10 @@ token is saved to the CLI config file automatically.
 
 Pass --no-browser to print the auth URL instead of launching a browser
 (useful for SSH sessions or headless environments). The command will wait
-up to 120 seconds for the browser callback before timing out.`,
+up to 120 seconds for the browser callback before timing out.
+
+By default authentication uses Google. Pass --provider=github to sign in
+with GitHub instead (for GitHub-first orgs).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if d.Cfg == nil {
 				var err error
@@ -45,7 +61,8 @@ up to 120 seconds for the browser callback before timing out.`,
 			}
 			defer cleanup()
 
-			authURL := fmt.Sprintf("%s/api/auth/cli-token?port=%d&nonce=%s", d.Cfg.APIURL, port, nonce)
+			provider, _ := cmd.Flags().GetString("provider")
+			authURL := buildCLITokenURL(d.Cfg.APIURL, port, nonce, provider)
 
 			noBrowser, _ := cmd.Flags().GetBool("no-browser")
 			if noBrowser {
@@ -76,6 +93,7 @@ up to 120 seconds for the browser callback before timing out.`,
 		},
 	}
 	cmd.Flags().Bool("no-browser", false, "Skip automatic browser launch")
+	cmd.Flags().String("provider", "", "OAuth provider for login: 'github' (default: google)")
 	return cmd
 }
 
