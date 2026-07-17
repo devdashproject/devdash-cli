@@ -438,6 +438,55 @@ func TestListCommandStatusFilter(t *testing.T) {
 	}
 }
 
+// statusMixBeads covers every stored status the open/blocked filters care
+// about, including a real stored "blocked" status and a terminal "failed" one.
+func statusMixBeads() []apiPkg.Bead {
+	return []apiPkg.Bead{
+		{ID: "aaaa0000-0000-0000-0000-0000000000a1", LocalBeadID: "mix-1", Subject: "Pending one", Status: "pending", Priority: 1, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a2", LocalBeadID: "mix-2", Subject: "Running one", Status: "in_progress", Priority: 0, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a3", LocalBeadID: "mix-3", Subject: "Blocked one", Status: "blocked", Priority: 2, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a4", LocalBeadID: "mix-4", Subject: "Failed one", Status: "failed", Priority: 3, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a5", LocalBeadID: "mix-5", Subject: "Done one", Status: "completed", Priority: 1, BeadType: "task"},
+	}
+}
+
+func TestListCommandOpenFilter(t *testing.T) {
+	run := newTestEnv(t, statusMixBeads())
+	out, err := run("list", "--status=open")
+	if err != nil {
+		t.Fatalf("list --status=open failed: %v", err)
+	}
+	// open = the active backlog: pending, in_progress, and blocked.
+	for _, want := range []string{"Pending one", "Running one", "Blocked one"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("open should contain %q, got: %s", want, out)
+		}
+	}
+	// Terminal states are excluded.
+	for _, notWant := range []string{"Failed one", "Done one"} {
+		if strings.Contains(out, notWant) {
+			t.Errorf("open should exclude %q, got: %s", notWant, out)
+		}
+	}
+}
+
+func TestListCommandBlockedFilter(t *testing.T) {
+	run := newTestEnv(t, statusMixBeads())
+	out, err := run("list", "--status=blocked")
+	if err != nil {
+		t.Fatalf("list --status=blocked failed: %v", err)
+	}
+	// blocked is an exact match on the stored status.
+	if !strings.Contains(out, "Blocked one") {
+		t.Errorf("blocked should contain Blocked one, got: %s", out)
+	}
+	for _, notWant := range []string{"Pending one", "Running one", "Failed one", "Done one"} {
+		if strings.Contains(out, notWant) {
+			t.Errorf("blocked should not contain %q, got: %s", notWant, out)
+		}
+	}
+}
+
 func TestListCommandMineFilter(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("list", "--mine")
