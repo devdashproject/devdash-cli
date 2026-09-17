@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,24 @@ const (
 	ExitAPI    = 2
 	ExitConfig = 3
 )
+
+// Entitlement error codes returned in the 403 envelope for blocked writes
+// (trial expiry / project or bead limits). See EntitlementErrorBody in the
+// server's packages/api-types.
+const (
+	CodeTrialExpired        = "TRIAL_EXPIRED"
+	CodeProjectLimitReached = "PROJECT_LIMIT_REACHED"
+	CodeBeadLimitReached    = "BEAD_LIMIT_REACHED"
+)
+
+func isEntitlementCode(code string) bool {
+	switch code {
+	case CodeTrialExpired, CodeProjectLimitReached, CodeBeadLimitReached:
+		return true
+	default:
+		return false
+	}
+}
 
 // Client wraps HTTP calls to the Dev-Dash API.
 type Client struct {
@@ -41,6 +60,16 @@ type APIError struct {
 	StatusCode int
 	Message    string
 	Body       string
+
+	// Entitlement fields, populated when the API returns a 403 envelope for a
+	// blocked write (trial expired / project or bead limit reached). Code is
+	// empty for non-entitlement errors.
+	Code        string
+	Limit       *int
+	Used        *int
+	Plan        string
+	TrialEndsAt string
+	UpgradeURL  string
 }
 
 func (e *APIError) Error() string {
@@ -48,6 +77,69 @@ func (e *APIError) Error() string {
 		return fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Message)
 	}
 	return fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Body)
+}
+
+// IsEntitlementError reports whether this error is a trial/limit block
+// (as opposed to a generic API failure).
+func (e *APIError) IsEntitlementError() bool {
+	return isEntitlementCode(e.Code)
+}
+
+// formatEntitlementMessage builds a clear, actionable message for a blocked
+// write: what limit was hit, trial status, and the upgrade path.
+func formatEntitlementMessage(message, code string, limit, used *int, trialEndsAt, upgradeURL string) string {
+	var b strings.Builder
+	if message != "" {
+		b.WriteString(message)
+	} else {
+		b.WriteString("This action is blocked by your plan's limits.")
+	}
+
+	switch code {
+	case CodeTrialExpired:
+		if when := trialEndedLabel(trialEndsAt); when != "" {
+			b.WriteString("\n  " + when)
+		}
+	case CodeProjectLimitReached, CodeBeadLimitReached:
+		resource := "projects"
+		if code == CodeBeadLimitReached {
+			resource = "tasks"
+		}
+		if limit != nil {
+			usedStr := "?"
+			if used != nil {
+				usedStr = strconv.Itoa(*used)
+			}
+			b.WriteString(fmt.Sprintf("\n  Limit: %s/%d %s used", usedStr, *limit, resource))
+		}
+	}
+
+	if upgradeURL != "" {
+		b.WriteString("\n  Upgrade: " + upgradeURL)
+	}
+
+	return b.String()
+}
+
+// trialEndedLabel renders how long ago the trial ended, e.g. "Trial ended
+// 6 days ago." Returns "" if trialEndsAt is missing or unparsable.
+func trialEndedLabel(trialEndsAt string) string {
+	if trialEndsAt == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, trialEndsAt)
+	if err != nil {
+		return ""
+	}
+	days := int(time.Since(t).Hours() / 24)
+	switch {
+	case days <= 0:
+		return "Trial ended today."
+	case days == 1:
+		return "Trial ended 1 day ago."
+	default:
+		return fmt.Sprintf("Trial ended %d days ago.", days)
+	}
 }
 
 // Do executes an HTTP request and returns the response body.
@@ -98,13 +190,29 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 			Error          string `json:"error"`
 			Message        string `json:"message"`
 			UpgradeMessage string `json:"upgrade_message"`
+			Code           string `json:"code"`
+			Limit          *int   `json:"limit"`
+			Used           *int   `json:"used"`
+			Plan           string `json:"plan"`
+			TrialEndsAt    string `json:"trialEndsAt"`
+			UpgradeURL     string `json:"upgradeUrl"`
 		}
 		if json.Unmarshal(respBody, &errResp) == nil {
-			if errResp.UpgradeMessage != "" {
+			apiErr.Code = errResp.Code
+			apiErr.Limit = errResp.Limit
+			apiErr.Used = errResp.Used
+			apiErr.Plan = errResp.Plan
+			apiErr.TrialEndsAt = errResp.TrialEndsAt
+			apiErr.UpgradeURL = errResp.UpgradeURL
+
+			switch {
+			case errResp.UpgradeMessage != "":
 				apiErr.Message = fmt.Sprintf("CLI update required: %s\nRun: devdash self-update", errResp.UpgradeMessage)
-			} else if errResp.Error != "" {
+			case isEntitlementCode(errResp.Code):
+				apiErr.Message = formatEntitlementMessage(errResp.Error, errResp.Code, errResp.Limit, errResp.Used, errResp.TrialEndsAt, errResp.UpgradeURL)
+			case errResp.Error != "":
 				apiErr.Message = errResp.Error
-			} else if errResp.Message != "" {
+			case errResp.Message != "":
 				apiErr.Message = errResp.Message
 			}
 		}

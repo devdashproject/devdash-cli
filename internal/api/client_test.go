@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestClientGet(t *testing.T) {
@@ -170,6 +172,147 @@ func TestClientUpgradeMessage(t *testing.T) {
 	expectedMsg := "CLI update required: This endpoint was removed in v0.5.0. Run devdash self-update.\nRun: devdash self-update"
 	if apiErr.Message != expectedMsg {
 		t.Errorf("Message = %q, want %q", apiErr.Message, expectedMsg)
+	}
+}
+
+func TestClientEntitlementTrialExpired(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(403)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":       "Your free trial has ended. Upgrade to a paid plan to make changes.",
+			"code":        "TRIAL_EXPIRED",
+			"limit":       nil,
+			"used":        nil,
+			"plan":        "trial",
+			"trialEndsAt": time.Now().Add(-6 * 24 * time.Hour).Format(time.RFC3339),
+			"upgradeUrl":  "https://devdash.dev/upgrade",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "test")
+	client.BaseURL = server.URL
+
+	_, err := client.Do("POST", "/beads", map[string]string{"subject": "x"})
+	if err == nil {
+		t.Fatal("should return error for 403")
+	}
+
+	apiErr, ok := err.(*APIError)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+	if apiErr.StatusCode != 403 {
+		t.Errorf("StatusCode = %d, want 403", apiErr.StatusCode)
+	}
+	if apiErr.Code != "TRIAL_EXPIRED" {
+		t.Errorf("Code = %q, want TRIAL_EXPIRED", apiErr.Code)
+	}
+	if !apiErr.IsEntitlementError() {
+		t.Error("IsEntitlementError() = false, want true")
+	}
+	if !strings.Contains(apiErr.Message, "Your free trial has ended") {
+		t.Errorf("Message missing server text: %q", apiErr.Message)
+	}
+	if !strings.Contains(apiErr.Message, "Trial ended 6 days ago.") {
+		t.Errorf("Message missing trial-ended detail: %q", apiErr.Message)
+	}
+	if !strings.Contains(apiErr.Message, "Upgrade: https://devdash.dev/upgrade") {
+		t.Errorf("Message missing upgrade path: %q", apiErr.Message)
+	}
+}
+
+func TestClientEntitlementProjectLimitReached(t *testing.T) {
+	limit := 1
+	used := 1
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(403)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":       "Free trial is limited to 1 project. Upgrade to create more.",
+			"code":        "PROJECT_LIMIT_REACHED",
+			"limit":       limit,
+			"used":        used,
+			"plan":        "trial",
+			"trialEndsAt": time.Now().Add(3 * 24 * time.Hour).Format(time.RFC3339),
+			"upgradeUrl":  "https://devdash.dev/upgrade",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "test")
+	client.BaseURL = server.URL
+
+	_, err := client.Do("POST", "/projects", map[string]string{"name": "x"})
+	apiErr, ok := err.(*APIError)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+	if apiErr.Code != "PROJECT_LIMIT_REACHED" {
+		t.Errorf("Code = %q, want PROJECT_LIMIT_REACHED", apiErr.Code)
+	}
+	if !strings.Contains(apiErr.Message, "Limit: 1/1 projects used") {
+		t.Errorf("Message missing limit detail: %q", apiErr.Message)
+	}
+	if !strings.Contains(apiErr.Message, "Upgrade: https://devdash.dev/upgrade") {
+		t.Errorf("Message missing upgrade path: %q", apiErr.Message)
+	}
+}
+
+func TestClientEntitlementBeadLimitReached(t *testing.T) {
+	limit := 20
+	used := 20
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(403)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":      "Free trial is limited to 20 tasks. Upgrade to add more.",
+			"code":       "BEAD_LIMIT_REACHED",
+			"limit":      limit,
+			"used":       used,
+			"plan":       "trial",
+			"upgradeUrl": "https://devdash.dev/upgrade",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "test")
+	client.BaseURL = server.URL
+
+	_, err := client.Do("POST", "/beads", map[string]string{"subject": "x"})
+	apiErr, ok := err.(*APIError)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+	if apiErr.Code != "BEAD_LIMIT_REACHED" {
+		t.Errorf("Code = %q, want BEAD_LIMIT_REACHED", apiErr.Code)
+	}
+	if !strings.Contains(apiErr.Message, "Limit: 20/20 tasks used") {
+		t.Errorf("Message missing limit detail: %q", apiErr.Message)
+	}
+}
+
+func TestClientEntitlementUnrecognizedCodeFallsBackToPlainError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(403)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Forbidden",
+			"code":  "SOME_OTHER_CODE",
+		})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, "test-token", "test")
+	client.BaseURL = server.URL
+
+	_, err := client.Do("POST", "/beads", map[string]string{"subject": "x"})
+	apiErr, ok := err.(*APIError)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+	if apiErr.IsEntitlementError() {
+		t.Error("IsEntitlementError() = true, want false for unrecognized code")
+	}
+	if apiErr.Message != "Forbidden" {
+		t.Errorf("Message = %q, want plain passthrough %q", apiErr.Message, "Forbidden")
 	}
 }
 
