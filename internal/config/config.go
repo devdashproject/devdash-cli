@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DefaultAPIURL      = "https://dev-dash-server-production.up.railway.app"
+	DefaultAPIURL      = "https://devdash-prime.up.railway.app"
 	DefaultFrontendURL = "https://dev-dash-blue.vercel.app"
 	DefaultCloseGate   = "push"
 	DefaultConfigDir   = ".config/dev-dash"
