@@ -110,7 +110,7 @@ func formatEntitlementMessage(message, code string, limit, used *int, trialEndsA
 			if used != nil {
 				usedStr = strconv.Itoa(*used)
 			}
-			b.WriteString(fmt.Sprintf("\n  Limit: %s/%d %s used", usedStr, *limit, resource))
+			fmt.Fprintf(&b, "\n  Limit: %s/%d %s used", usedStr, *limit, resource)
 		}
 	}
 
