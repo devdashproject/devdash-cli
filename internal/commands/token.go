@@ -3,9 +3,21 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+// defaultTokenName generates a reasonable token name when the caller doesn't
+// provide one, so "token create" works with no arguments.
+func defaultTokenName() string {
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		host = "cli"
+	}
+	return fmt.Sprintf("%s-%s", host, time.Now().Format("2006-01-02-150405"))
+}
 
 func newTokenCmd(d *Deps) *cobra.Command {
 	tokenCmd := &cobra.Command{
@@ -22,12 +34,20 @@ session. Treat them like passwords.`,
 	}
 
 	tokenCmd.AddCommand(&cobra.Command{
-		Use: "create <name>", Short: "Create a new API token", Args: cobra.ExactArgs(1),
+		Use: "create [name]", Short: "Create a new API token", Args: cobra.MaximumNArgs(1),
+		Long: `Create a new API token.
+
+Naming is optional — with no argument, a name is generated from your
+hostname and the current time ("token create <name>" to pick your own).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
 				return err
 			}
-			data, err := d.Client.Post("/auth/tokens", map[string]string{"name": args[0]})
+			name := defaultTokenName()
+			if len(args) > 0 && args[0] != "" {
+				name = args[0]
+			}
+			data, err := d.Client.Post("/auth/tokens", map[string]string{"name": name})
 			if err != nil {
 				return err
 			}

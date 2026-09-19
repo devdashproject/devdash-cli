@@ -141,7 +141,10 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 		case "GET":
 			json.NewEncoder(w).Encode([]map[string]string{{"id": "tok-1", "name": "test"}})
 		case "POST":
-			json.NewEncoder(w).Encode(map[string]string{"id": "tok-new", "token": "dd_secret"})
+			var req map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&req)
+			name, _ := req["name"].(string)
+			json.NewEncoder(w).Encode(map[string]string{"id": "tok-new", "token": "dd_secret", "name": name})
 		}
 	})
 
@@ -669,6 +672,23 @@ func TestTokenCreateCommand(t *testing.T) {
 	}
 	if !strings.Contains(out, "tok-new") {
 		t.Errorf("should contain new token ID, got: %s", out)
+	}
+	if !strings.Contains(out, "my-token") {
+		t.Errorf("should echo the given name, got: %s", out)
+	}
+}
+
+func TestTokenCreateCommandWithoutName(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("token", "create")
+	if err != nil {
+		t.Fatalf("token create without a name should succeed, got: %v", err)
+	}
+	if !strings.Contains(out, "tok-new") {
+		t.Errorf("should contain new token ID, got: %s", out)
+	}
+	if strings.Contains(out, `"name": ""`) {
+		t.Errorf("should generate a non-empty default name, got: %s", out)
 	}
 }
 
