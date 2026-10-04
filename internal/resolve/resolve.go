@@ -41,7 +41,7 @@ func IDWithFetch(input string, client *api.Client, projectID string) (string, er
 	// Need beads for prefix/local resolution
 	beads, err := api.FetchAll[api.Bead](client, "/beads?projectId="+projectID)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch beads for ID resolution: %w", err)
+		return "", fmt.Errorf("failed to fetch issues for ID resolution: %w", err)
 	}
 
 	return ID(input, beads)
@@ -59,11 +59,11 @@ func resolveLocalID(localID string, beads []api.Bead) (string, error) {
 
 	switch len(matches) {
 	case 0:
-		return "", fmt.Errorf("no bead found with local ID %q", localID)
+		return "", fmt.Errorf("no issue found with local ID %q", localID)
 	case 1:
 		return matches[0].ID, nil
 	default:
-		return "", fmt.Errorf("ambiguous local ID %q matches %d beads", localID, len(matches))
+		return "", fmt.Errorf("ambiguous local ID %q matches %d issues", localID, len(matches))
 	}
 }
 
@@ -79,11 +79,11 @@ func resolvePrefix(prefix string, beads []api.Bead) (string, error) {
 
 	switch len(matches) {
 	case 0:
-		return "", fmt.Errorf("no bead found with prefix %q", prefix)
+		return "", fmt.Errorf("no issue found with prefix %q in this project", prefix)
 	case 1:
 		return matches[0].ID, nil
 	default:
-		return "", fmt.Errorf("ambiguous prefix %q matches %d beads — use a longer prefix", prefix, len(matches))
+		return "", fmt.Errorf("ambiguous prefix %q matches %d issues — use a longer prefix", prefix, len(matches))
 	}
 }
 

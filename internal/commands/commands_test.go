@@ -637,7 +637,7 @@ func TestDiagnoseCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diagnose failed: %v", err)
 	}
-	if !strings.Contains(out, "── Bead ──") {
+	if !strings.Contains(out, "── Issue ──") {
 		t.Errorf("should contain bead header, got: %s", out)
 	}
 	if !strings.Contains(out, "Ready task") {
@@ -1123,5 +1123,36 @@ func TestDoctorFailureIsSilentError(t *testing.T) {
 	}
 	if strings.Count(out, "issue(s) found") != 1 {
 		t.Errorf("summary should print once, got:\n%s", out)
+	}
+}
+
+func TestHelpListsTopicsAndSuggestsUpdateForClaim(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, _ := run("help")
+	for _, want := range []string{"Help topics", "auth", "cross-project"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("devdash help should list %q", want)
+		}
+	}
+	out, err := run("help", "cross-project")
+	if err != nil || !strings.Contains(out, "Cross-Project") {
+		t.Errorf("help cross-project should show the projects topic: %v", err)
+	}
+	_, err = run("claim", "abc")
+	if err == nil || !strings.Contains(err.Error(), "update") {
+		t.Errorf("claim should suggest update, got: %v", err)
+	}
+	if hint := unknownCommandHint(err); !strings.Contains(hint, "--status=in_progress") {
+		t.Errorf("claim hint should spell out the command, got %q", hint)
+	}
+}
+
+func TestUpdateAcceptsSubject(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	if _, err := run("update", "aaaa0000", "--subject=New name"); err != nil {
+		t.Errorf("update --subject failed: %v", err)
+	}
+	if _, err := run("update", "aaaa0000", "--subject=a", "--title=b"); err == nil {
+		t.Error("update with both --subject and --title should fail")
 	}
 }

@@ -18,7 +18,7 @@ type scoreResult struct {
 func newScoreCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "score [<id>]",
-		Short: "Score beads for automability",
+		Short: "Score issues for automability",
 		Long: `Score beads to evaluate how suitable they are for automation.
 
 Without an ID, scores every bead in the current project and prints a
@@ -50,7 +50,7 @@ automated execution.`,
 						return nil
 					}
 				}
-				fmt.Printf("Scored %d beads:\n", len(result.Scored))
+				fmt.Printf("Scored %d issues:\n", len(result.Scored))
 				for _, s := range result.Scored {
 					fmt.Printf("  %s  %s (%d/100)  complexity=%d\n",
 						shortID(s.BeadID), s.AutomabilityGrade, s.AutomabilityScore, s.ComplexityScore)

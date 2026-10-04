@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/config"
@@ -54,7 +55,7 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "devdash",
 		Short: "AI-powered task tracking for developers and agents",
-		Long:  "DevDash CLI — lightweight task tracking built for AI coding agents and developer workflows.",
+		Long:  "DevDash CLI — lightweight task tracking built for AI coding agents and developer workflows.\n\nNew here? Start with: devdash help workflow   (logging in: devdash help auth)\n\n" + helpTopicList,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// If deps were injected (tests), skip config loading
 			if deps.Cfg != nil {
@@ -136,6 +137,17 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	return rootCmd
 }
 
+// unknownCommandHint spells out the command for verbs agents commonly guess.
+func unknownCommandHint(err error) string {
+	msg := err.Error()
+	for _, verb := range []string{"claim", "start", "begin"} {
+		if strings.HasPrefix(msg, fmt.Sprintf("unknown command %q", verb)) {
+			return "To start work on an issue: devdash update <id> --status=in_progress"
+		}
+	}
+	return ""
+}
+
 // silentError makes the command exit nonzero without printing anything more,
 // for commands that already reported the problem themselves.
 type silentError struct{ msg string }
@@ -149,6 +161,9 @@ func Execute() {
 		var silent *silentError
 		if !errors.As(err, &silent) {
 			fmt.Fprintf(os.Stderr, "%v\n", maskSecrets(err.Error()))
+			if hint := unknownCommandHint(err); hint != "" {
+				fmt.Fprintln(os.Stderr, hint)
+			}
 		}
 		os.Exit(1)
 	}

@@ -12,11 +12,12 @@ import (
 
 func newUpdateCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update an issue",
+		Use:        "update <id>",
+		Short:      "Update an issue (also how you start work: --status=in_progress)",
+		SuggestFor: []string{"claim", "start", "begin", "assign", "edit"},
 		Long: `Update one or more fields on an existing issue in a single call.
 
-Supported flags: --status, --title, --description, --priority, --owner,
+Supported flags: --status, --title (or --subject), --description, --priority, --owner,
 --parent, --pre-instructions, --due, --estimate, and --sort-order.
 At least one flag must be provided or the command returns an error.
 
@@ -45,10 +46,15 @@ identify an issue within the current project.`,
 				req.Status = &v
 				hasChanges = true
 			}
-			if cmd.Flags().Changed("title") {
-				v, _ := cmd.Flags().GetString("title")
-				req.Subject = &v
-				hasChanges = true
+			if cmd.Flags().Changed("title") && cmd.Flags().Changed("subject") {
+				return fmt.Errorf("use either --title or --subject, not both (they are the same)")
+			}
+			for _, name := range []string{"title", "subject"} {
+				if cmd.Flags().Changed(name) {
+					v, _ := cmd.Flags().GetString(name)
+					req.Subject = &v
+					hasChanges = true
+				}
 			}
 			if cmd.Flags().Changed("description") {
 				v, _ := cmd.Flags().GetString("description")
@@ -125,10 +131,13 @@ identify an issue within the current project.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("status", "", "Status: pending, in_progress, completed")
+	cmd.Flags().String("status", "", "Status: pending, in_progress, completed (to start work: --status=in_progress)")
 	cmd.Flags().String("title", "", "New title")
+	cmd.Flags().String("subject", "", "Same as --title")
 	cmd.Flags().String("description", "", "New description")
-	cmd.Flags().Int("priority", -1, "Priority: 0-4")
+	cmd.Flags().Int("priority", -1, "Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog")
+	// -1 means "not set"; don't print it as "(default -1)" in help
+	cmd.Flags().Lookup("priority").DefValue = "0"
 	cmd.Flags().String("owner", "", "Assign to (email or name)")
 	cmd.Flags().String("parent", "", "Parent bead ID")
 	cmd.Flags().String("pre-instructions", "", "Agent-specific context")

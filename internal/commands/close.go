@@ -10,14 +10,14 @@ import (
 
 func newCloseCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "close <id> [<id>...]",
-		Short: "Close one or more issues",
+		Use:        "close <id> [<id>...]",
+		Short:      "Close one or more issues",
+		SuggestFor: []string{"done", "finish", "complete", "resolve"},
 		Long: `Close one or more issues, marking them as completed.
 
 Accepts one or multiple issue IDs (short prefixes work). Optionally attach
-a completion summary, the git commit SHA, and a pull request URL. When
-closing a single issue, uses a direct PATCH; multiple IDs are sent as a
-bulk close request.
+a completion summary, the git commit SHA, and a pull request URL; with
+several IDs, the same summary, commit and PR apply to each.
 
 Best practice: close after "git push" succeeds, and always include
 --summary with context for future readers.`,

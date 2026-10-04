@@ -13,13 +13,17 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:   "help [topic]",
 		Short: "Help about devdash or a specific topic",
-		Long:  "Available topics: auth, cli, workflow, close, pr, projects, report\nOr: devdash help <command>",
+		Long:  helpTopicList,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return rootCmd.Help()
 			}
 
-			if text, ok := helpTopics[args[0]]; ok {
+			topic := args[0]
+			if topic == "cross-project" {
+				topic = "projects"
+			}
+			if text, ok := helpTopics[topic]; ok {
 				fmt.Println(fillTopicPlaceholders(text))
 				return nil
 			}
@@ -29,10 +33,21 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 				return target.Help()
 			}
 
-			return fmt.Errorf("unknown help topic or command: %s\n\nAvailable topics: auth, cli, workflow, close, pr, projects, report\nOr: devdash help <command>", maskSecrets(args[0]))
+			return fmt.Errorf("unknown help topic or command: %s\n\n%s", maskSecrets(args[0]), helpTopicList)
 		},
 	})
 }
+
+// helpTopicList is shown by 'devdash help', 'help help', and unknown topics.
+const helpTopicList = `Help topics (devdash help <topic>):
+  auth            Logging in: browser, API token, DEVDASH_TOKEN
+  cli             Command reference with examples
+  workflow        Working through issues: claim, work, close
+  close           Writing a good close summary
+  pr              PR footer format for linking issues
+  cross-project   Dependencies and work across projects (alias: projects)
+  report          Reporting progress
+Or: devdash help <command>`
 
 // fillTopicPlaceholders substitutes the linked project's ID and frontend URL,
 // so copied examples point at the right project.
