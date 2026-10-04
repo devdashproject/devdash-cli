@@ -24,7 +24,9 @@ then priority, then sort order (see 'update --sort-order'), then oldest
 first, so a plan's steps come out in the order they were created.
 
 Use --since to narrow results to issues created within a time window
-(e.g. --since=7d, --since=2h, or --since=2025-01-01).`,
+(e.g. --since=7d, --since=2h, or --since=2025-01-01).
+
+Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

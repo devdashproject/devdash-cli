@@ -17,7 +17,8 @@ func newActivityCmd(d *Deps) *cobra.Command {
 Without arguments, shows all recent activity across the project. When an
 issue ID is provided, filters to activity related to that issue only
 (searching the project's most recent 500 events). Use --limit to cap the
-number of results returned.`,
+number of results returned. JSON by default; --pretty prints one line per
+event (no emails or avatar URLs).`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
@@ -26,6 +27,7 @@ number of results returned.`,
 			}
 
 			limit, _ := cmd.Flags().GetInt("limit")
+			pretty, _ := cmd.Flags().GetBool("pretty")
 			path := "/projects/" + pid + "/activity"
 
 			if len(args) > 0 {
@@ -33,7 +35,12 @@ number of results returned.`,
 				if err != nil {
 					return err
 				}
-				return printBeadActivity(d, path, uuid, limit)
+				data, err := beadActivity(d, path, uuid, limit)
+				if err != nil {
+					return err
+				}
+				printOutput(data, pretty, prettyActivity)
+				return nil
 			}
 
 			if limit > 0 {
@@ -45,38 +52,32 @@ number of results returned.`,
 				return err
 			}
 
-			var activity json.RawMessage
-			if err := json.Unmarshal(data, &activity); err != nil {
-				fmt.Println(string(data))
-				return nil
-			}
-			out, _ := json.MarshalIndent(activity, "", "  ")
-			fmt.Println(string(out))
+			printOutput(data, pretty, prettyActivity)
 			return nil
 		},
 	}
 	cmd.Flags().Int("limit", 0, "Maximum number of results")
+	cmd.Flags().Bool("pretty", false, "One line per event instead of JSON")
 	return cmd
 }
 
 // activityWindow is the most events the server returns in one page.
 const activityWindow = 500
 
-// printBeadActivity shows activity for one bead. The server currently ignores
+// beadActivity returns {"data": [...]} activity for one bead. The server currently ignores
 // the targetId filter (dev-dash 0dd43585), so fetch the largest window and
 // filter here as well; events older than that window are not reachable.
-func printBeadActivity(d *Deps, path, uuid string, limit int) error {
+func beadActivity(d *Deps, path, uuid string, limit int) ([]byte, error) {
 	data, err := d.Client.Get(fmt.Sprintf("%s?limit=%d&targetId=%s", path, activityWindow, uuid))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var page struct {
 		Data []json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(data, &page); err != nil {
-		fmt.Println(string(data))
-		return nil
+		return data, nil
 	}
 
 	matched := []json.RawMessage{}
@@ -92,7 +93,5 @@ func printBeadActivity(d *Deps, path, uuid string, limit int) error {
 		matched = matched[:limit]
 	}
 
-	out, _ := json.MarshalIndent(map[string]interface{}{"data": matched}, "", "  ")
-	fmt.Println(string(out))
-	return nil
+	return json.Marshal(map[string]interface{}{"data": matched})
 }

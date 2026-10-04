@@ -21,7 +21,9 @@ Results can be narrowed with --status (pending, in_progress, completed),
 YYYY-MM-DD date filtering on updatedAt), --parent (show only children
 of a specific bead ID), and --mine (show only beads assigned to you).
 
-When no issues match the filters, a message is printed to stderr.`,
+When no issues match the filters, a message is printed to stderr.
+
+Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {

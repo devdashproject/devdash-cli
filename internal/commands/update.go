@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func newUpdateCmd(d *Deps) *cobra.Command {
@@ -119,7 +121,7 @@ identify an issue within the current project.`,
 				return err
 			}
 
-			fmt.Printf("Updated: %s\n", uuid)
+			fmt.Printf("Updated: %s (%s)\n", uuid, changedFlags(cmd))
 			var resp struct {
 				Warnings []string `json:"warnings"`
 			}
@@ -145,4 +147,20 @@ identify an issue within the current project.`,
 	cmd.Flags().Int("estimate", 0, "Estimated minutes")
 	cmd.Flags().String("sort-order", "", "Sort order among siblings (integer or 'none' to clear)")
 	return cmd
+}
+
+// changedFlags summarizes the flags the user set, e.g. "status=in_progress, priority=1".
+func changedFlags(cmd *cobra.Command) string {
+	var parts []string
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		if f.Name == "project" {
+			return
+		}
+		v := f.Value.String()
+		if len(v) > 40 {
+			v = v[:37] + "..."
+		}
+		parts = append(parts, f.Name+"="+v)
+	})
+	return strings.Join(parts, ", ")
 }
