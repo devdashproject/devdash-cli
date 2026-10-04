@@ -245,7 +245,7 @@ cd ~/projects/backend && dd link
 cd ~/projects/infra && dd link
 ```
 
-The CLI reads `.devdash` to know which project you're working in. No global state to juggle.
+The CLI reads `.devdash` to know which project you're working in. An `api_url` in that repository file is ignored to protect your saved token. For a self-hosted API, set `DD_API_URL` or use `~/.config/dev-dash/settings.json`; run `devdash doctor` to see the active endpoint source.
 
 ---
 
