@@ -36,6 +36,9 @@ jobs:
           retention-days: 1
 
   npm-publish:
+    # Opt in after the npm publishing credential is repaired. GitHub binaries
+    # remain releasable while the npm package is intentionally held back.
+    if: vars.PUBLISH_NPM == 'true'
     needs: release
     runs-on: ubuntu-latest
     steps:
