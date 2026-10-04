@@ -125,6 +125,14 @@ identify an issue within the current project.`,
 			}
 
 			fmt.Printf("Updated: %s (%s)\n", uuid, changedFlags(cmd))
+			if req.ParentBeadID != nil {
+				warnIfParentCompleted(d, pid, *req.ParentBeadID)
+			} else if req.Status != nil && *req.Status == "in_progress" {
+				var updated api.Bead
+				if json.Unmarshal(data, &updated) == nil {
+					warnIfParentCompleted(d, pid, updated.ParentBeadID)
+				}
+			}
 			var resp struct {
 				Warnings []string `json:"warnings"`
 			}

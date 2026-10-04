@@ -54,3 +54,33 @@ func TestShowPrettyListsChildren(t *testing.T) {
 		t.Errorf("show --pretty should list children oldest first:\n%s", out)
 	}
 }
+
+func TestWarnsAboutCompletedParent(t *testing.T) {
+	beads := hierarchyBeads()
+	beads[0].Status = "completed" // the parent
+	run := newTestEnv(t, beads)
+
+	out, err := run("create", "--title=Late step", "--parent=pa11")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if !strings.Contains(out, "is already completed") || !strings.Contains(out, "devdash update pa110000 --status=in_progress") {
+		t.Errorf("create under a completed parent should warn:\n%s", out)
+	}
+
+	out, err = run("update", "c2220000", "--status=in_progress")
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	if !strings.Contains(out, "is already completed") {
+		t.Errorf("starting a child of a completed parent should warn:\n%s", out)
+	}
+}
+
+func TestNoParentWarningWhenParentOpen(t *testing.T) {
+	run := newTestEnv(t, hierarchyBeads()) // parent in_progress
+	out, err := run("update", "c2220000", "--status=in_progress")
+	if err != nil || strings.Contains(out, "already completed") {
+		t.Errorf("no warning expected for an open parent, got %q (%v)", out, err)
+	}
+}
