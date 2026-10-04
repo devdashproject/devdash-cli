@@ -34,7 +34,7 @@ Best practice: close after "git push" succeeds, and always include
 
 			var cr *api.CompletionResult
 			if pr != "" || commit != "" || summary != "" {
-				cr = &api.CompletionResult{Summary: summary, PR: pr, Commit: commit}
+				cr = &api.CompletionResult{Summary: summary, PRURL: pr, CommitSHA: commit}
 			}
 
 			beads, err := api.FetchAll[api.Bead](d.Client, "/beads?projectId="+pid)

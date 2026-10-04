@@ -109,11 +109,38 @@ type JobSummary struct {
 	CompletedAt string `json:"completedAt,omitempty"`
 }
 
-// CompletionResult holds metadata from closing an issue.
+// CompletionResult holds metadata from closing an issue. Field names match the
+// server and web UI (prUrl, commitSha).
 type CompletionResult struct {
-	Summary string `json:"summary,omitempty"`
-	PR      string `json:"pr,omitempty"`
-	Commit  string `json:"commit,omitempty"`
+	Summary   string `json:"summary,omitempty"`
+	PRURL     string `json:"prUrl,omitempty"`
+	CommitSHA string `json:"commitSha,omitempty"`
+}
+
+// UnmarshalJSON also accepts the legacy "pr"/"commit" keys that older CLI
+// versions wrote, so existing completion results still decode.
+func (c *CompletionResult) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Summary   string `json:"summary"`
+		PRURL     string `json:"prUrl"`
+		CommitSHA string `json:"commitSha"`
+		PR        string `json:"pr"`
+		Commit    string `json:"commit"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	c.Summary = raw.Summary
+	c.PRURL = firstNonEmpty(raw.PRURL, raw.PR)
+	c.CommitSHA = firstNonEmpty(raw.CommitSHA, raw.Commit)
+	return nil
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // BurnIntelligence holds scoring data.
