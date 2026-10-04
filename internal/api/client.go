@@ -144,6 +144,9 @@ func trialEndedLabel(trialEndsAt string) string {
 
 // Do executes an HTTP request and returns the response body.
 func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
+	if err := ValidateEndpoint(c.BaseURL); err != nil {
+		return nil, fmt.Errorf("invalid API endpoint: %w", err)
+	}
 	url := c.BaseURL + "/api" + path
 
 	var reqBody io.Reader
@@ -169,7 +172,15 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "devdash-cli-go/"+c.Version)
 
-	resp, err := c.HTTPClient.Do(req)
+	client := c.HTTPClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	// Copy the caller's transport and timeout, but never allow it to relax the
+	// credential boundary through a custom redirect handler.
+	guardedClient := *client
+	guardedClient.CheckRedirect = SameOriginRedirect
+	resp, err := guardedClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

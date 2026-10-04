@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 const (
@@ -14,6 +16,7 @@ const (
 	DefaultCloseGate   = "push"
 	DefaultConfigDir   = ".config/dev-dash"
 	TokenFileName      = "token"
+	SettingsFileName   = "settings.json"
 	ProjectFileName    = ".devdash"
 )
 
@@ -27,13 +30,14 @@ type ProjectFile struct {
 
 // Config holds resolved configuration from all sources.
 type Config struct {
-	ProjectID   string
-	APIURL      string
-	FrontendURL string
-	CloseGate   string
-	Token       string
-	TokenSource string // "DEVDASH_TOKEN env var" or the token file path; empty if no token
-	ConfigDir   string
+	ProjectID    string
+	APIURL       string
+	APIURLSource string
+	FrontendURL  string
+	CloseGate    string
+	Token        string
+	TokenSource  string // "DEVDASH_TOKEN env var" or the token file path; empty if no token
+	ConfigDir    string
 }
 
 // TokenEnvVar supplies an API token without a token file; it wins over the file.
@@ -42,9 +46,10 @@ const TokenEnvVar = "DEVDASH_TOKEN"
 // Load resolves configuration from env vars, .devdash file, and defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		APIURL:      DefaultAPIURL,
-		FrontendURL: DefaultFrontendURL,
-		CloseGate:   DefaultCloseGate,
+		APIURL:       DefaultAPIURL,
+		APIURLSource: "built-in default",
+		FrontendURL:  DefaultFrontendURL,
+		CloseGate:    DefaultCloseGate,
 	}
 
 	// Config directory
@@ -57,13 +62,28 @@ func Load() (*Config, error) {
 		cfg.ConfigDir = filepath.Join(home, DefaultConfigDir)
 	}
 
+	// The endpoint must come from user-owned configuration, never a repository.
+	// A checked-out .devdash file may be controlled by someone else.
+	settingsPath := filepath.Join(cfg.ConfigDir, SettingsFileName)
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		var settings struct {
+			APIURL string `json:"api_url"`
+		}
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", settingsPath, err)
+		}
+		if settings.APIURL != "" {
+			cfg.APIURL = settings.APIURL
+			cfg.APIURLSource = settingsPath
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("cannot read %s: %w", settingsPath, err)
+	}
+
 	// Load .devdash project file (walk up from cwd to find it)
 	if pf, err := findProjectFile(); err == nil {
 		if pf.ProjectID != "" {
 			cfg.ProjectID = pf.ProjectID
-		}
-		if pf.APIURL != "" {
-			cfg.APIURL = pf.APIURL
 		}
 		if pf.FrontendURL != "" {
 			cfg.FrontendURL = pf.FrontendURL
@@ -79,6 +99,10 @@ func Load() (*Config, error) {
 	}
 	if v := os.Getenv("DD_API_URL"); v != "" {
 		cfg.APIURL = v
+		cfg.APIURLSource = "DD_API_URL environment variable"
+	}
+	if err := api.ValidateEndpoint(cfg.APIURL); err != nil {
+		return nil, fmt.Errorf("invalid API URL from %s: %w", cfg.APIURLSource, err)
 	}
 
 	// Load token: DEVDASH_TOKEN env var wins over the token file
