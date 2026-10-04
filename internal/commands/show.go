@@ -10,7 +10,7 @@ import (
 func newShowCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <id>",
-		Short: "Full issue detail",
+		Short: "Full issue detail (JSON; --pretty for a readable view)",
 		Long: `Display the full detail for a single issue as pretty-printed JSON.
 
 The output includes all fields: status, priority, type, description,

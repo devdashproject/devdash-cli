@@ -58,7 +58,7 @@ belong in the issue title or description.`,
 func newCommentsCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comments <id>",
-		Short: "List comments on an issue",
+		Short: "List comments on an issue (JSON; --pretty for one line each)",
 		Long: `List all comments on an issue.
 
 Fetches and displays every comment attached to the specified issue

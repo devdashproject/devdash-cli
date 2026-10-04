@@ -191,7 +191,7 @@ devdash needs an API token. Pick whichever fits your environment:
 
 ## Starting Work
   devdash ready                             See what's available
-  devdash show <id>                         Read the full issue
+  devdash show <id> --pretty                Read the issue (drop --pretty for JSON)
   devdash update <id> --status=in_progress  Mark as started
 
 ## Completing Work
