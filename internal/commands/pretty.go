@@ -175,6 +175,13 @@ func prettyActivity(data []byte) (string, error) {
 		}
 		sb.WriteString(line + "\n")
 	}
+	var page struct {
+		NextCursor string `json:"nextCursor"`
+		HasMore    bool   `json:"hasMore"`
+	}
+	if json.Unmarshal(data, &page) == nil && page.HasMore && page.NextCursor != "" {
+		fmt.Fprintf(&sb, "More: add --cursor=%s\n", page.NextCursor)
+	}
 	return sb.String(), nil
 }
 
