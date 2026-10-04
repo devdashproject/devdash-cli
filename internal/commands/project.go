@@ -3,11 +3,11 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/devdashproject/devdash-cli/internal/config"
 	"os"
 	"path/filepath"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 

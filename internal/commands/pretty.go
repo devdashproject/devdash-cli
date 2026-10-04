@@ -1,15 +1,15 @@
 package commands
 
 import (
-	"regexp"
-	"sort"
-
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/output"
-	"strings"
 )
 
 // printJSON pretty-prints any JSON response, falling back to the raw bytes.
