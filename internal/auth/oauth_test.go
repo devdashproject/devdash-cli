@@ -1,8 +1,12 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -10,109 +14,88 @@ import (
 func TestGenerateNonce(t *testing.T) {
 	nonce1, err := GenerateNonce()
 	if err != nil {
-		t.Fatalf("GenerateNonce() failed: %v", err)
+		t.Fatal(err)
 	}
-	if len(nonce1) != 32 { // 16 bytes = 32 hex chars
+	if len(nonce1) != 32 {
 		t.Errorf("nonce length = %d, want 32", len(nonce1))
 	}
-
-	// Should be unique
 	nonce2, _ := GenerateNonce()
 	if nonce1 == nonce2 {
 		t.Error("two nonces should be different")
 	}
 }
 
-func TestCallbackServer(t *testing.T) {
-	nonce := "test-nonce-12345"
-
-	port, resultCh, cleanup, err := StartCallbackServer(nonce)
+func TestGeneratePKCE(t *testing.T) {
+	verifier, challenge, err := GeneratePKCE()
 	if err != nil {
-		t.Fatalf("StartCallbackServer() failed: %v", err)
+		t.Fatal(err)
 	}
-	defer cleanup()
-
-	if port < 18787 || port > 18792 {
-		t.Errorf("port = %d, want 18787-18792", port)
+	if len(verifier) != 43 || !regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`).MatchString(verifier) {
+		t.Fatalf("invalid PKCE verifier: %q", verifier)
 	}
-
-	// Send a callback
-	url := fmt.Sprintf("http://127.0.0.1:%d/?token=test-jwt&nonce=%s", port, nonce)
-	resp, err := http.Get(url)
-	if err != nil {
-		t.Fatalf("callback request failed: %v", err)
+	hash := sha256.Sum256([]byte(verifier))
+	if want := base64.RawURLEncoding.EncodeToString(hash[:]); challenge != want || len(challenge) != 43 {
+		t.Errorf("challenge = %q, want %q", challenge, want)
 	}
-	resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		t.Errorf("status = %d, want 200", resp.StatusCode)
-	}
-
-	select {
-	case result := <-resultCh:
-		if result.Error != nil {
-			t.Fatalf("callback error: %v", result.Error)
-		}
-		if result.Token != "test-jwt" {
-			t.Errorf("token = %q, want %q", result.Token, "test-jwt")
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("timeout waiting for callback result")
+	other, _, _ := GeneratePKCE()
+	if verifier == other {
+		t.Error("PKCE verifier reused")
 	}
 }
 
-func TestCallbackServerBadNonce(t *testing.T) {
-	nonce := "correct-nonce"
-
-	port, resultCh, cleanup, err := StartCallbackServer(nonce)
+func TestCallbackServerAcceptsCodeOnce(t *testing.T) {
+	port, resultCh, cleanup, err := StartCallbackServer("correct-nonce")
 	if err != nil {
-		t.Fatalf("StartCallbackServer() failed: %v", err)
+		t.Fatal(err)
 	}
 	defer cleanup()
+	callback := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
 
-	url := fmt.Sprintf("http://127.0.0.1:%d/?token=test-jwt&nonce=wrong-nonce", port)
-	resp, err := http.Get(url)
-	if err != nil {
-		t.Fatalf("callback request failed: %v", err)
+	for _, path := range []string{
+		"/?code=valid&nonce=correct-nonce",
+		"/callback?token=dd_secret&nonce=correct-nonce",
+		"/callback?code=attacker&nonce=wrong",
+		"/callback?code=attacker&nonce=correct-nonce&token=dd_secret",
+		"/callback?code=attacker&nonce=correct-nonce&code=second",
+	} {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d%s", port, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			t.Errorf("attacker callback %q was accepted", path)
+		}
 	}
-	resp.Body.Close()
-
-	if resp.StatusCode != 400 {
-		t.Errorf("status = %d, want 400", resp.StatusCode)
-	}
-
 	select {
 	case result := <-resultCh:
-		if result.Error == nil {
-			t.Fatal("should have error for bad nonce")
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("timeout")
+		t.Fatalf("invalid callback completed login: %+v", result)
+	default:
 	}
-}
 
-func TestCallbackServerNoToken(t *testing.T) {
-	nonce := "test-nonce"
-
-	port, resultCh, cleanup, err := StartCallbackServer(nonce)
+	resp, err := http.Get(callback + "?code=one-time-code&nonce=correct-nonce")
 	if err != nil {
-		t.Fatalf("StartCallbackServer() failed: %v", err)
+		t.Fatal(err)
 	}
-	defer cleanup()
-
-	url := fmt.Sprintf("http://127.0.0.1:%d/?nonce=%s", port, nonce)
-	resp, err := http.Get(url)
+	page, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || string(page) == "" {
+		t.Fatalf("valid callback status %d", resp.StatusCode)
+	}
+	if result := <-resultCh; result.Code != "one-time-code" || result.Error != nil {
+		t.Fatalf("result = %+v", result)
+	}
+	resp, err = http.Get(callback + "?code=replay&nonce=correct-nonce")
 	if err != nil {
-		t.Fatalf("callback request failed: %v", err)
+		t.Fatal(err)
 	}
 	resp.Body.Close()
-
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("replay status = %d, want 409", resp.StatusCode)
+	}
 	select {
 	case result := <-resultCh:
-		if result.Error == nil {
-			t.Fatal("should have error for missing token")
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("timeout")
+		t.Fatalf("replay delivered second code: %+v", result)
+	case <-time.After(20 * time.Millisecond):
 	}
 }
