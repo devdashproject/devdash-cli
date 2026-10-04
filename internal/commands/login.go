@@ -2,9 +2,11 @@ package commands
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -24,9 +26,9 @@ func newLoginCmd(d *Deps) *cobra.Command {
 		Short: "Authenticate with DevDash",
 		Long: `Authenticate with DevDash using an OAuth browser flow.
 
-Starts a local HTTP callback server, generates a one-time nonce, and opens
-your default browser to the DevDash auth page. Once you approve access the
-token is saved to the CLI config file automatically.
+Starts a local HTTP callback server, generates a one-time nonce and proof key,
+and opens your default browser to the DevDash auth page. Once you approve
+access, the CLI exchanges the one-time code and saves the token.
 
 Pass --no-browser to print the auth URL instead of launching a browser.
 The browser must still run on this machine: it calls back to localhost.
@@ -71,8 +73,15 @@ the web app under Settings. See 'devdash help auth'.`,
 			if token = strings.TrimSpace(token); token != "" {
 				return loginWithToken(d.Cfg, token)
 			}
+			if err := api.ValidateEndpoint(d.Cfg.APIURL); err != nil {
+				return fmt.Errorf("invalid API endpoint: %w", err)
+			}
 
 			nonce, err := auth.GenerateNonce()
+			if err != nil {
+				return err
+			}
+			verifier, challenge, err := auth.GeneratePKCE()
 			if err != nil {
 				return err
 			}
@@ -83,15 +92,19 @@ the web app under Settings. See 'devdash help auth'.`,
 			}
 			defer cleanup()
 
-			authURL := fmt.Sprintf("%s/api/auth/cli-token?port=%d&nonce=%s", d.Cfg.APIURL, port, nonce)
+			authURL, err := cliAuthURL(d.Cfg.APIURL, port, nonce, challenge)
+			if err != nil {
+				return err
+			}
+			redirectURI := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
 
 			noBrowser, _ := cmd.Flags().GetBool("no-browser")
 			if noBrowser {
-				fmt.Printf("Open this URL in your browser:\n%s\n", authURL)
+				fmt.Printf("Open this URL in your browser:\n%s\n", authURL.String())
 			} else {
 				fmt.Println("Opening browser for authentication...")
-				if err := openBrowser(authURL); err != nil {
-					fmt.Printf("Could not open browser. Open this URL manually:\n%s\n", authURL)
+				if err := openBrowser(authURL.String()); err != nil {
+					fmt.Printf("Could not open browser. Open this URL manually:\n%s\n", authURL.String())
 				}
 			}
 
@@ -103,7 +116,11 @@ the web app under Settings. See 'devdash help auth'.`,
 				if result.Error != nil {
 					return fmt.Errorf("authentication failed: %w", result.Error)
 				}
-				if err := d.Cfg.SaveToken(result.Token); err != nil {
+				token, err := exchangeLoginCode(d.Cfg.APIURL, result.Code, verifier, redirectURI, nonce)
+				if err != nil {
+					return fmt.Errorf("authentication failed: %w", err)
+				}
+				if err := d.Cfg.SaveToken(token); err != nil {
 					return fmt.Errorf("failed to save token: %w", err)
 				}
 				fmt.Println("Authentication successful! Token saved.")
@@ -118,6 +135,48 @@ the web app under Settings. See 'devdash help auth'.`,
 	cmd.Flags().String("token", "", "Save an existing API token instead of using the browser (verified first)")
 	cmd.Flags().Bool("with-token", false, "Read an API token from stdin instead of using the browser")
 	return cmd
+}
+
+func cliAuthURL(apiURL string, port int, nonce, challenge string) (*url.URL, error) {
+	if err := api.ValidateEndpoint(apiURL); err != nil {
+		return nil, fmt.Errorf("invalid API endpoint: %w", err)
+	}
+	authURL, err := url.Parse(strings.TrimRight(apiURL, "/") + "/api/auth/cli-token")
+	if err != nil {
+		return nil, fmt.Errorf("invalid API endpoint: %w", err)
+	}
+	query := authURL.Query()
+	query.Set("port", fmt.Sprint(port))
+	query.Set("nonce", nonce)
+	query.Set("code_challenge", challenge)
+	authURL.RawQuery = query.Encode()
+	return authURL, nil
+}
+
+// exchangeLoginCode sends the proof directly to the trusted API endpoint.
+// The API client validates the endpoint and guards redirects before sending it.
+func exchangeLoginCode(apiURL, code, verifier, redirectURI, nonce string) (string, error) {
+	client := api.New(apiURL, "", Version)
+	data, err := client.Post("/auth/cli/exchange", map[string]string{
+		"code":          code,
+		"code_verifier": verifier,
+		"redirect_uri":  redirectURI,
+		"nonce":         nonce,
+	})
+	if err != nil {
+		var apiErr *api.APIError
+		if errors.As(err, &apiErr) {
+			return "", fmt.Errorf("code exchange rejected (HTTP %d); nothing was saved", apiErr.StatusCode)
+		}
+		return "", fmt.Errorf("code exchange failed; nothing was saved: %w", err)
+	}
+	var response struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil || response.Token == "" {
+		return "", fmt.Errorf("invalid code exchange response; nothing was saved")
+	}
+	return response.Token, nil
 }
 
 // loginWithToken verifies a token against the API, then saves it.

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -46,6 +47,100 @@ func runLogin(t *testing.T, goodToken string, stdin string, args ...string) (str
 	var out bytes.Buffer
 	out.ReadFrom(r)
 	return out.String() + errBuf.String(), err
+}
+
+func TestExchangeLoginCode(t *testing.T) {
+	const code = "one-time-code"
+	const verifier = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+	const nonce = "client-nonce"
+	const redirectURI = "http://127.0.0.1:18787/callback"
+	const token = "dd_saved_secret"
+	used := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/auth/cli/exchange" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "" {
+			t.Errorf("unexpected exchange request: %s %s", r.Method, r.URL)
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		var payload map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Errorf("invalid exchange body: %v", err)
+		}
+		if len(payload) != 4 || payload["code"] != code || payload["code_verifier"] != verifier || payload["redirect_uri"] != redirectURI || payload["nonce"] != nonce {
+			t.Errorf("unexpected exchange body: %#v", payload)
+			http.Error(w, "bad proof", http.StatusUnauthorized)
+			return
+		}
+		if used {
+			http.Error(w, "expired or replayed", http.StatusUnauthorized)
+			return
+		}
+		used = true
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"token":"` + token + `"}`))
+	}))
+	defer server.Close()
+
+	got, err := exchangeLoginCode(server.URL, code, verifier, redirectURI, nonce)
+	if err != nil || got != token {
+		t.Fatalf("exchange token = %q, err = %v", got, err)
+	}
+	got, err = exchangeLoginCode(server.URL, code, verifier, redirectURI, nonce)
+	if got != "" || err == nil || !strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), code) {
+		t.Fatalf("replayed exchange token = %q, err = %v", got, err)
+	}
+}
+
+func TestCLIAuthURLContainsChallengeWithoutCredentials(t *testing.T) {
+	authURL, err := cliAuthURL("https://devdash.example", 18787, "nonce", strings.Repeat("A", 43))
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := authURL.Query()
+	if authURL.Path != "/api/auth/cli-token" || len(query) != 3 || query.Get("port") != "18787" || query.Get("nonce") != "nonce" || query.Get("code_challenge") != strings.Repeat("A", 43) {
+		t.Fatalf("unexpected browser URL: %s", authURL)
+	}
+	if strings.Contains(authURL.String(), "token=") || strings.Contains(authURL.String(), "code_verifier") {
+		t.Fatalf("browser URL contains credentials: %s", authURL)
+	}
+}
+
+func TestExchangeLoginCodeRejectsRedirect(t *testing.T) {
+	verifierExposed := false
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		verifierExposed = true
+	}))
+	defer attacker.Close()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, attacker.URL, http.StatusTemporaryRedirect)
+	}))
+	defer server.Close()
+	_, err := exchangeLoginCode(server.URL, "code", "secret-verifier", "http://127.0.0.1:18787/callback", "nonce")
+	if err == nil || verifierExposed {
+		t.Fatalf("cross-origin redirect accepted or proof exposed: %v", err)
+	}
+}
+
+func TestExchangeLoginCodeRejectsEmptyToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"token":""}`))
+	}))
+	defer server.Close()
+	got, err := exchangeLoginCode(server.URL, "code", "verifier", "http://127.0.0.1:18787/callback", "nonce")
+	if got != "" || err == nil {
+		t.Fatalf("empty exchange token accepted: %q, %v", got, err)
+	}
+}
+
+func TestExchangeLoginCodeRejectsExpiredCode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "expired", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	got, err := exchangeLoginCode(server.URL, "expired-code", "verifier", "http://127.0.0.1:18787/callback", "nonce")
+	if got != "" || err == nil || !strings.Contains(err.Error(), "HTTP 401") {
+		t.Fatalf("expired code accepted: %q, %v", got, err)
+	}
 }
 
 func savedToken(t *testing.T) string {
