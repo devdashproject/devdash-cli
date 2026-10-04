@@ -139,3 +139,39 @@ func isHexString(s string) bool {
 	}
 	return len(s) > 0
 }
+
+// ProjectInList finds a project by full ID, exact name (case-insensitive),
+// or unambiguous ID prefix, in that order.
+func ProjectInList(input string, projects []api.Project) (api.Project, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return api.Project{}, fmt.Errorf("empty project")
+	}
+	for _, p := range projects {
+		if strings.EqualFold(p.ID, input) {
+			return p, nil
+		}
+	}
+	var byName []api.Project
+	for _, p := range projects {
+		if strings.EqualFold(p.Name, input) {
+			byName = append(byName, p)
+		}
+	}
+	if len(byName) == 1 {
+		return byName[0], nil
+	}
+	if len(byName) > 1 {
+		return api.Project{}, fmt.Errorf("%d projects are named %q — use the project ID instead (see 'devdash project list')", len(byName), input)
+	}
+	id, err := resolveProjectPrefix(input, projects)
+	if err != nil {
+		return api.Project{}, err
+	}
+	for _, p := range projects {
+		if p.ID == id {
+			return p, nil
+		}
+	}
+	return api.Project{}, fmt.Errorf("no project found matching %q", input)
+}
