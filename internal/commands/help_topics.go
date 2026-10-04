@@ -218,7 +218,25 @@ devdash needs an API token. Pick whichever fits your environment:
   Always run devdash show <id> and check:
   - parentBeadId: understand the larger goal
   - blockedBy/blocks: understand ordering constraints
-  - preInstructions: agent-specific context`,
+  - preInstructions: agent-specific context
+
+## Automatic Behavior (done by the server)
+  - Starting an issue (--status=in_progress) assigns it to you and adds
+    a system comment. If its parent is pending, the parent moves to
+    in_progress too.
+  - Adding a dependency (dep add) sets the issue to "blocked"; it returns
+    to "pending" when everything it depends on is completed.
+  - When the last open child of a parent closes, the parent closes
+    automatically with no summary. close tells you when this happens;
+    add an overall summary with: devdash close <parent> --summary="..."
+  - Closing an already-closed issue replaces its summary, commit and PR.
+  - ready skips parents that still have open children: work the children.
+
+## close_gate (.devdash)
+  Written by link. "push" (default) means close after git push; "commit"
+  means close after git commit (e.g. repos with no remote). It shapes the
+  agent instructions from prime and agent-setup; the CLI does not block
+  closing either way.`,
 
 	"close": `# Close Summary Guide
 
