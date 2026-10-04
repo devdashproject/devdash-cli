@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
@@ -35,8 +34,11 @@ that doesn't belong in the issue title or description.`,
 				return err
 			}
 
-			_, err = d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{ProjectID: pid, Content: body})
-			return err
+			if _, err = d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{ProjectID: pid, Content: body}); err != nil {
+				return err
+			}
+			fmt.Printf("Commented on %s\n", uuid)
+			return nil
 		},
 	}
 	cmd.Flags().String("body", "", "Comment body (required)")
@@ -44,14 +46,14 @@ that doesn't belong in the issue title or description.`,
 }
 
 func newCommentsCmd(d *Deps) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "comments <id>",
 		Short: "List comments on an issue",
 		Long: `List all comments on an issue.
 
 Fetches and displays every comment attached to the specified issue
-in JSON format. Use this to review the discussion history and any
-decisions recorded on an issue.`,
+in JSON format. Add --pretty for one line per comment. Use this to
+review the discussion history and any decisions recorded on an issue.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
@@ -69,15 +71,11 @@ decisions recorded on an issue.`,
 				return err
 			}
 
-			var comments []json.RawMessage
-			if err := json.Unmarshal(data, &comments); err != nil {
-				fmt.Println(string(data))
-				return nil
-			}
-
-			out, _ := json.MarshalIndent(comments, "", "  ")
-			fmt.Println(string(out))
+			pretty, _ := cmd.Flags().GetBool("pretty")
+			printOutput(data, pretty, prettyComments)
 			return nil
 		},
 	}
+	cmd.Flags().Bool("pretty", false, "One line per comment instead of JSON")
+	return cmd
 }

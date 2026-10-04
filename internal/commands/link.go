@@ -11,21 +11,31 @@ import (
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/config"
+	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
 
 func newLinkCmd(d *Deps) *cobra.Command {
-	return &cobra.Command{
-		Use:   "link",
+	cmd := &cobra.Command{
+		Use:   "link [project]",
 		Short: "Link a git repo to a devdash project",
 		Long: `Link a git repository to a devdash project.
 
-Detects the GitHub remote from git config and attempts to match it against
-your existing devdash projects. If a match is found, it links automatically;
-otherwise you are prompted to select an existing project or create a new one.
+Non-interactive (scripts, agents): name the project, by ID, ID prefix,
+or exact name. Nothing is prompted:
+  devdash link 47eb046a              Link the repo root
+  devdash link "My Project" --here   Link only the current directory
+  devdash --project=47eb046a link    Same as passing the project
 
-Writes a .devdash configuration file at the repository root (or the directory
-you specify). If .devdash already exists, the command exits without overwriting it.`,
+Interactive: with no project given, detects the GitHub remote and matches
+it against your projects. If nothing matches, you pick a project or create
+a new one. If input runs out before you choose, link fails rather than
+guessing.
+
+Writes a .devdash file at the repository root (or the current directory
+with --here). It records the project ID and close_gate ("push": close
+issues after git push). If .devdash already exists, link leaves it alone.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
 				return err
@@ -56,23 +66,37 @@ you specify). If .devdash already exists, the command exits without overwriting 
 				return nil
 			}
 
+			target := ""
+			if len(args) > 0 {
+				target = args[0]
+			} else if p, _ := cmd.Root().PersistentFlags().GetString("project"); p != "" {
+				target = p
+			}
+			here, _ := cmd.Flags().GetBool("here")
+			// One reader for all prompts: separate scanners would each buffer
+			// ahead and lose piped answers meant for later prompts.
+			in := bufio.NewReader(cmd.InOrStdin())
+
 			writeDir := repoRoot
-
-			// Scope selection: if not at repo root, ask
-			if cwd != repoRoot {
-				repoName := detectGitRepo()
-				if repoName == "" {
-					repoName = filepath.Base(repoRoot)
+			if here {
+				writeDir = cwd
+			} else if target == "" && !samePath(cwd, repoRoot) {
+				// Scope selection: interactive only, when not at the repo root
+				if repoName := detectGitRepo(); repoName != "" {
+					fmt.Printf("Detected git repo: github.com/%s  (root: %s)\n", repoName, repoRoot)
+				} else {
+					fmt.Printf("Detected git repo at %s (no GitHub remote)\n", repoRoot)
 				}
-
-				fmt.Printf("Detected git repo: github.com/%s  (root: %s)\n", repoName, repoRoot)
 				fmt.Printf("Current directory:  %s\n\n", cwd)
 				fmt.Println("Link the whole repo or just this directory?")
 				fmt.Printf("  1. Whole repo  %s\n", repoRoot)
 				fmt.Printf("  2. This directory  %s\n\n", cwd)
 				fmt.Print("Select [1-2]: ")
 
-				choice := readChoice(2)
+				choice, err := readChoiceFrom(in, 2)
+				if err != nil {
+					return err
+				}
 				if choice == 2 {
 					writeDir = cwd
 				}
@@ -97,10 +121,16 @@ you specify). If .devdash already exists, the command exits without overwriting 
 				return fmt.Errorf("invalid projects response: %w", err)
 			}
 
-			// Try auto-match
 			repoName := detectGitRepo()
 			var matched *api.Project
-			if repoName != "" {
+			if target != "" {
+				p, err := resolve.ProjectInList(target, projects)
+				if err != nil {
+					return err
+				}
+				matched = &p
+			} else if repoName != "" {
+				// Try auto-match on the GitHub remote
 				for i, p := range projects {
 					if strings.EqualFold(p.GithubRepo, repoName) {
 						matched = &projects[i]
@@ -111,7 +141,11 @@ you specify). If .devdash already exists, the command exits without overwriting 
 
 			var projectID string
 			if matched != nil {
-				fmt.Printf("Found a matching project: %s\n\n", matched.Name)
+				if target != "" {
+					fmt.Printf("Linking to project: %s (%s)\n", matched.Name, matched.ID)
+				} else {
+					fmt.Printf("Found a matching project: %s\n\n", matched.Name)
+				}
 				projectID = matched.ID
 			} else {
 				// No match, show list
@@ -127,7 +161,10 @@ you specify). If .devdash already exists, the command exits without overwriting 
 				fmt.Printf("  %d. Create new project\n\n", len(projects)+1)
 				fmt.Print("Select [1-" + fmt.Sprintf("%d", len(projects)+1) + "]: ")
 
-				choice := readChoice(len(projects) + 1)
+				choice, err := readChoiceFrom(in, len(projects)+1)
+				if err != nil {
+					return err
+				}
 				if choice <= len(projects) {
 					projectID = projects[choice-1].ID
 					fmt.Printf("Linked to \"%s\".\n", projects[choice-1].Name)
@@ -138,7 +175,7 @@ you specify). If .devdash already exists, the command exits without overwriting 
 						defaultName = filepath.Base(writeDir)
 					}
 					fmt.Printf("\nProject name [%s]: ", defaultName)
-					name := readLine(defaultName)
+					name := readLineFrom(in, defaultName)
 
 					reqBody := map[string]string{"name": name}
 					if repoName != "" {
@@ -174,12 +211,25 @@ you specify). If .devdash already exists, the command exits without overwriting 
 				return fmt.Errorf("failed to write %s: %w", devdashPath, err)
 			}
 
-			fmt.Println("Wrote .devdash")
+			fmt.Printf("Wrote %s\n", devdashPath)
 			fmt.Println()
 			fmt.Println("Next: run `devdash agent-setup` to configure your AI agent, or `devdash create` to add your first issue.")
 			return nil
 		},
 	}
+	cmd.Flags().Bool("here", false, "Link the current directory instead of the repo root")
+	return cmd
+}
+
+// samePath compares directories after resolving symlinks (e.g. /tmp vs /private/tmp).
+func samePath(a, b string) bool {
+	if ra, err := filepath.EvalSymlinks(a); err == nil {
+		a = ra
+	}
+	if rb, err := filepath.EvalSymlinks(b); err == nil {
+		b = rb
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
 }
 
 func isHomeOrRoot(dir string) bool {
@@ -230,27 +280,29 @@ func mustGetwd() string {
 	return dir
 }
 
-func readChoice(maxChoice int) int {
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
+// readChoiceFrom reads a 1..maxChoice selection. It fails when input runs out
+// rather than defaulting, so a non-interactive run can't silently pick option 1.
+func readChoiceFrom(in *bufio.Reader, maxChoice int) (int, error) {
+	for {
+		line, err := in.ReadString('\n')
+		if err != nil && line == "" {
+			break
+		}
+		text := strings.TrimSpace(line)
 		var choice int
 		if _, err := fmt.Sscanf(text, "%d", &choice); err != nil || choice < 1 || choice > maxChoice {
 			fmt.Printf("Invalid selection. Please enter a number between 1 and %d: ", maxChoice)
 			continue
 		}
-		return choice
+		return choice, nil
 	}
-	return 1
+	fmt.Println()
+	return 0, fmt.Errorf("no selection made (input ended). To link without prompts: devdash link <project-id-or-name> [--here]")
 }
 
-func readLine(defaultVal string) string {
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
-		if text == "" {
-			return defaultVal
-		}
+func readLineFrom(in *bufio.Reader, defaultVal string) string {
+	line, _ := in.ReadString('\n')
+	if text := strings.TrimSpace(line); text != "" {
 		return text
 	}
 	return defaultVal

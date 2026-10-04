@@ -3,9 +3,11 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -441,6 +443,55 @@ func TestListCommandStatusFilter(t *testing.T) {
 	}
 }
 
+// statusMixBeads covers every stored status the open/blocked filters care
+// about, including a real stored "blocked" status and a terminal "failed" one.
+func statusMixBeads() []apiPkg.Bead {
+	return []apiPkg.Bead{
+		{ID: "aaaa0000-0000-0000-0000-0000000000a1", LocalBeadID: "mix-1", Subject: "Pending one", Status: "pending", Priority: 1, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a2", LocalBeadID: "mix-2", Subject: "Running one", Status: "in_progress", Priority: 0, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a3", LocalBeadID: "mix-3", Subject: "Blocked one", Status: "blocked", Priority: 2, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a4", LocalBeadID: "mix-4", Subject: "Failed one", Status: "failed", Priority: 3, BeadType: "task"},
+		{ID: "aaaa0000-0000-0000-0000-0000000000a5", LocalBeadID: "mix-5", Subject: "Done one", Status: "completed", Priority: 1, BeadType: "task"},
+	}
+}
+
+func TestListCommandOpenFilter(t *testing.T) {
+	run := newTestEnv(t, statusMixBeads())
+	out, err := run("list", "--status=open")
+	if err != nil {
+		t.Fatalf("list --status=open failed: %v", err)
+	}
+	// open = the active backlog: pending, in_progress, and blocked.
+	for _, want := range []string{"Pending one", "Running one", "Blocked one"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("open should contain %q, got: %s", want, out)
+		}
+	}
+	// Terminal states are excluded.
+	for _, notWant := range []string{"Failed one", "Done one"} {
+		if strings.Contains(out, notWant) {
+			t.Errorf("open should exclude %q, got: %s", notWant, out)
+		}
+	}
+}
+
+func TestListCommandBlockedFilter(t *testing.T) {
+	run := newTestEnv(t, statusMixBeads())
+	out, err := run("list", "--status=blocked")
+	if err != nil {
+		t.Fatalf("list --status=blocked failed: %v", err)
+	}
+	// blocked is an exact match on the stored status.
+	if !strings.Contains(out, "Blocked one") {
+		t.Errorf("blocked should contain Blocked one, got: %s", out)
+	}
+	for _, notWant := range []string{"Pending one", "Running one", "Failed one", "Done one"} {
+		if strings.Contains(out, notWant) {
+			t.Errorf("blocked should not contain %q, got: %s", notWant, out)
+		}
+	}
+}
+
 func TestListCommandMineFilter(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
 	out, err := run("list", "--mine")
@@ -635,7 +686,7 @@ func TestDiagnoseCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diagnose failed: %v", err)
 	}
-	if !strings.Contains(out, "── Bead ──") {
+	if !strings.Contains(out, "── Issue ──") {
 		t.Errorf("should contain bead header, got: %s", out)
 	}
 	if !strings.Contains(out, "Ready task") {
@@ -1083,5 +1134,74 @@ func TestTokenListActiveHidesRevoked(t *testing.T) {
 	}
 	if strings.Contains(out, "tok-2") || !strings.Contains(out, "tok-1") {
 		t.Errorf("--active should hide revoked tokens: %s", out)
+	}
+}
+
+func TestHelpPRUsesLinkedProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".devdash"), []byte(`{"project_id":"linked-proj-0000"}`), 0644)
+	t.Chdir(dir)
+	t.Setenv("DD_PROJECT_ID", "")
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "pr")
+	if err != nil {
+		t.Fatalf("help pr failed: %v", err)
+	}
+	if !strings.Contains(out, "linked-proj-0000") || strings.Contains(out, "95ca3de0") {
+		t.Errorf("help pr should show the linked project ID, got:\n%s", out)
+	}
+
+	t.Chdir(t.TempDir())
+	out, _ = run("help", "pr")
+	if !strings.Contains(out, "<project-id>") {
+		t.Errorf("help pr should show a placeholder when unlinked, got:\n%s", out)
+	}
+}
+
+func TestDoctorFailureIsSilentError(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", dir)
+	t.Setenv("DD_TOKEN_FILE", filepath.Join(dir, "token"))
+	t.Setenv("DEVDASH_TOKEN", "")
+	t.Chdir(dir)
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("doctor")
+	var silent *silentError
+	if !errors.As(err, &silent) {
+		t.Fatalf("doctor should fail with a silentError (already printed), got: %v", err)
+	}
+	if strings.Count(out, "issue(s) found") != 1 {
+		t.Errorf("summary should print once, got:\n%s", out)
+	}
+}
+
+func TestHelpListsTopicsAndSuggestsUpdateForClaim(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, _ := run("help")
+	for _, want := range []string{"Help topics", "auth", "cross-project"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("devdash help should list %q", want)
+		}
+	}
+	out, err := run("help", "cross-project")
+	if err != nil || !strings.Contains(out, "Cross-Project") {
+		t.Errorf("help cross-project should show the projects topic: %v", err)
+	}
+	_, err = run("claim", "abc")
+	if err == nil || !strings.Contains(err.Error(), "update") {
+		t.Errorf("claim should suggest update, got: %v", err)
+	}
+	if hint := unknownCommandHint(err); !strings.Contains(hint, "--status=in_progress") {
+		t.Errorf("claim hint should spell out the command, got %q", hint)
+	}
+}
+
+func TestUpdateAcceptsSubject(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	if _, err := run("update", "aaaa0000", "--subject=New name"); err != nil {
+		t.Errorf("update --subject failed: %v", err)
+	}
+	if _, err := run("update", "aaaa0000", "--subject=a", "--title=b"); err == nil {
+		t.Error("update with both --subject and --title should fail")
 	}
 }

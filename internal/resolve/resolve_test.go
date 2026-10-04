@@ -192,3 +192,29 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+func TestProjectInList(t *testing.T) {
+	projects := []api.Project{
+		{ID: "aaaa1111-0000-0000-0000-000000000001", Name: "Alpha"},
+		{ID: "aaaa2222-0000-0000-0000-000000000002", Name: "beta"},
+		{ID: "bbbb3333-0000-0000-0000-000000000003", Name: "dup"},
+		{ID: "cccc4444-0000-0000-0000-000000000004", Name: "dup"},
+	}
+	cases := []struct {
+		in, wantID string
+		wantErr    bool
+	}{
+		{"aaaa1111-0000-0000-0000-000000000001", "aaaa1111-0000-0000-0000-000000000001", false},
+		{"alpha", "aaaa1111-0000-0000-0000-000000000001", false},
+		{"aaaa2", "aaaa2222-0000-0000-0000-000000000002", false},
+		{"aaaa", "", true}, // ambiguous prefix
+		{"dup", "", true},  // ambiguous name
+		{"zzzz", "", true}, // not found
+	}
+	for _, c := range cases {
+		p, err := ProjectInList(c.in, projects)
+		if c.wantErr != (err != nil) || (!c.wantErr && p.ID != c.wantID) {
+			t.Errorf("ProjectInList(%q) = %q, %v", c.in, p.ID, err)
+		}
+	}
+}

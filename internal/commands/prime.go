@@ -127,7 +127,7 @@ as Markdown so it can be injected directly into an agent's context window.`,
 			fmt.Println("## On-Demand Reference")
 			fmt.Println("Run these when you need detailed guidance:")
 			fmt.Println("- `devdash help cli` — Full command reference (flags, ID formats, --since syntax)")
-			fmt.Println("- `devdash help workflow` — When to create issues, decomposition patterns, bead relationships")
+			fmt.Println("- `devdash help workflow` — When to create issues, decomposition patterns, issue relationships")
 			fmt.Println("- `devdash help close` — Close summary expectations with examples")
 			fmt.Println("- `devdash help pr` — PR footer format and multi-issue PRs")
 			fmt.Println("- `devdash help projects` — Cross-project dependencies and multi-repo work")

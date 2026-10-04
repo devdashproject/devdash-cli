@@ -12,7 +12,7 @@ import (
 func newDispatchCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dispatch <id>",
-		Short: "Dispatch a bead for execution",
+		Short: "Dispatch an issue for execution",
 		Long: `Queue a bead for execution as a job.
 
 The prompt sent to the worker is chosen from the first non-empty field in this
@@ -63,7 +63,7 @@ Returns the created job ID on success.`,
 			_ = json.Unmarshal(data, &job)
 
 			fmt.Printf("Job queued: %s\n", job.ID)
-			fmt.Printf("  Bead:   %s — %s\n", shortID(uuid), bead.Subject)
+			fmt.Printf("  Issue:  %s — %s\n", shortID(uuid), bead.Subject)
 			fmt.Printf("  Status: %s\n", job.Status)
 			if job.WorkerType != "" {
 				fmt.Printf("  Worker: %s\n", job.WorkerType)

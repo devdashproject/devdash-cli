@@ -81,7 +81,7 @@ configuration and environment issues in one shot.`,
 
 			if issues > 0 {
 				fmt.Printf("\n%d issue(s) found.\n", issues)
-				return fmt.Errorf("%d issue(s) found", issues)
+				return &silentError{fmt.Sprintf("%d issue(s) found", issues)}
 			}
 			fmt.Println("\nAll checks passed.")
 			return nil

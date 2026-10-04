@@ -218,7 +218,7 @@ func printLoginBreadcrumbs() {
 	}
 
 	// In git repo but not at root
-	if cwd != repoRoot {
+	if !samePath(cwd, repoRoot) {
 		fmt.Printf("\nNavigate to your repo's top level directory (%s) and run `devdash link` to get started.\n", repoRoot)
 		printAliasSetupOffer()
 		return
