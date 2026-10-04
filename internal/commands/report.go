@@ -11,7 +11,7 @@ import (
 func newReportCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "report <id>",
-		Short: "Report progress on an issue",
+		Short: "Report progress on an issue (optional; for dashboards)",
 		Long: `Report progress on an issue at key milestones during development.
 
 Requires --status set to one of: code_complete, committed, pushed, or

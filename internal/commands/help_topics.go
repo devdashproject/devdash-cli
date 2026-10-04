@@ -202,6 +202,20 @@ devdash needs an API token. Pick whichever fits your environment:
 
   Git operations MUST succeed before closing. Never close before push.
 
+## The Minimum Per Task
+  Two devdash calls are enough: update --status=in_progress to start,
+  close --summary --commit when the work is committed/pushed.
+  comment and report are optional.
+
+## Where Your Notes Go
+  close --summary   The permanent record: what changed, why, decisions and
+                    follow-ups. Reviewers read this first; make it complete.
+  comment           Notes worth keeping while work is underway (a decision,
+                    a blocker, a hand-off). Optional.
+  report            Machine-readable progress for dashboards and stale-work
+                    detection (code_complete, committed, pushed, error).
+                    Optional; skip it if you close promptly.
+
 ## When to Create Issues
   - Before writing ANY code (issue-first rule)
   - One issue per commit

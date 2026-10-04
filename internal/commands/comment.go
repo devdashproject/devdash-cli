@@ -12,7 +12,7 @@ import (
 func newCommentCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comment <id> [text]",
-		Short: "Add a comment to an issue",
+		Short: "Add a comment to an issue (optional notes; the close summary is the record)",
 		Long: `Add a comment to an issue.
 
 Pass the text as the second argument or with --body:

@@ -1243,3 +1243,13 @@ func TestProjectCreateSuggestsLinkAndLinks(t *testing.T) {
 		t.Errorf("--link should link the new project, got %q", got)
 	}
 }
+
+func TestWorkflowExplainsWhereNotesGo(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, _ := run("help", "workflow")
+	for _, want := range []string{"The Minimum Per Task", "close --summary   The permanent record", "report            Machine-readable"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("help workflow missing %q", want)
+		}
+	}
+}
