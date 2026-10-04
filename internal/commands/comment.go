@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
@@ -10,14 +11,17 @@ import (
 
 func newCommentCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "comment <id>",
-		Short: "Add a comment to an issue",
+		Use:   "comment <id> [text]",
+		Short: "Add a comment to an issue (optional notes; the close summary is the record)",
 		Long: `Add a comment to an issue.
 
-Attaches a text comment to the specified issue. The --body flag is
-required. Use this to record decisions, progress notes, or context
-that doesn't belong in the issue title or description.`,
-		Args: cobra.ExactArgs(1),
+Pass the text as the second argument or with --body:
+  devdash comment <id> "Chose approach B because ..."
+  devdash comment <id> --body="Chose approach B because ..."
+
+Use this to record decisions, progress notes, or context that doesn't
+belong in the issue title or description.`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
@@ -25,8 +29,14 @@ that doesn't belong in the issue title or description.`,
 			}
 
 			body, _ := cmd.Flags().GetString("body")
-			if body == "" {
-				return fmt.Errorf("--body is required")
+			if len(args) == 2 {
+				if body != "" {
+					return fmt.Errorf("give the comment text once: as the second argument or with --body, not both")
+				}
+				body = args[1]
+			}
+			if strings.TrimSpace(body) == "" {
+				return fmt.Errorf("comment text is required: devdash comment <id> \"text\" (or --body=\"text\")")
 			}
 
 			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
@@ -41,14 +51,14 @@ that doesn't belong in the issue title or description.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("body", "", "Comment body (required)")
+	cmd.Flags().String("body", "", "Comment text (or pass it as the second argument)")
 	return cmd
 }
 
 func newCommentsCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comments <id>",
-		Short: "List comments on an issue",
+		Short: "List comments on an issue (JSON; --pretty for one line each)",
 		Long: `List all comments on an issue.
 
 Fetches and displays every comment attached to the specified issue

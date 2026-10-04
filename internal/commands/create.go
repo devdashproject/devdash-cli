@@ -92,6 +92,7 @@ to mark it in_progress when you begin work.`,
 			}
 
 			fmt.Printf("Created: %s - %s\n", bead.ID, bead.Subject)
+			warnIfParentCompleted(d, pid, req.ParentBeadID)
 			var resp struct {
 				Warnings []string `json:"warnings"`
 			}

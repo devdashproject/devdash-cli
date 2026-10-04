@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
@@ -121,4 +122,18 @@ func printCloseResults(d *Deps, pid string, uuids []string, before []api.Bead, w
 		fmt.Printf("Parent %s %q closed automatically: all its children are done.\n", shortID(p), parent.Subject)
 		fmt.Printf("  Add an overall summary: devdash close %s --summary=\"...\"\n", shortID(p))
 	}
+}
+
+// warnIfParentCompleted tells the user when new or restarted work sits under
+// a parent that is already completed; the server leaves that parent closed.
+func warnIfParentCompleted(d *Deps, pid, parentID string) {
+	if parentID == "" {
+		return
+	}
+	parent, err := api.JSON[api.Bead](d.Client.Get("/beads/" + parentID + "?projectId=" + pid))
+	if err != nil || parent.Status != "completed" {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Note: parent %s %q is already completed and stays completed.\n", shortID(parentID), parent.Subject)
+	fmt.Fprintf(os.Stderr, "  To reopen it: devdash update %s --status=in_progress\n", shortID(parentID))
 }

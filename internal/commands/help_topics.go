@@ -191,7 +191,7 @@ devdash needs an API token. Pick whichever fits your environment:
 
 ## Starting Work
   devdash ready                             See what's available
-  devdash show <id>                         Read the full issue
+  devdash show <id> --pretty                Read the issue (drop --pretty for JSON)
   devdash update <id> --status=in_progress  Mark as started
 
 ## Completing Work
@@ -201,6 +201,20 @@ devdash needs an API token. Pick whichever fits your environment:
   devdash close <id> --summary="..." --commit=$(git rev-parse HEAD)
 
   Git operations MUST succeed before closing. Never close before push.
+
+## The Minimum Per Task
+  Two devdash calls are enough: update --status=in_progress to start,
+  close --summary --commit when the work is committed/pushed.
+  comment and report are optional.
+
+## Where Your Notes Go
+  close --summary   The permanent record: what changed, why, decisions and
+                    follow-ups. Reviewers read this first; make it complete.
+  comment           Notes worth keeping while work is underway (a decision,
+                    a blocker, a hand-off). Optional.
+  report            Machine-readable progress for dashboards and stale-work
+                    detection (code_complete, committed, pushed, error).
+                    Optional; skip it if you close promptly.
 
 ## When to Create Issues
   - Before writing ANY code (issue-first rule)

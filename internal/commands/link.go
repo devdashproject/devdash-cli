@@ -33,8 +33,10 @@ a new one. If input runs out before you choose, link fails rather than
 guessing.
 
 Writes a .devdash file at the repository root (or the current directory
-with --here). It records the project ID and close_gate ("push": close
-issues after git push). If .devdash already exists, link leaves it alone.`,
+with --here). It records the project ID and close_gate: when to close
+issues. "push" (close after git push) is the default; repos with no git
+remote get "commit" (close after git commit). Override with --close-on.
+If .devdash already exists, link leaves it alone.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
@@ -73,6 +75,10 @@ issues after git push). If .devdash already exists, link leaves it alone.`,
 				target = p
 			}
 			here, _ := cmd.Flags().GetBool("here")
+			closeOn, _ := cmd.Flags().GetString("close-on")
+			if closeOn != "" && closeOn != "push" && closeOn != "commit" {
+				return fmt.Errorf("--close-on must be push or commit (got %q)", closeOn)
+			}
 			// One reader for all prompts: separate scanners would each buffer
 			// ahead and lose piped answers meant for later prompts.
 			in := bufio.NewReader(cmd.InOrStdin())
@@ -198,9 +204,10 @@ issues after git push). If .devdash already exists, link leaves it alone.`,
 
 			// The repository file may be committed and shared. Keep the
 			// credentialed API endpoint in user-owned settings or DD_API_URL.
+			closeGate, gateNote := chooseCloseGate(closeOn, hasGitRemote())
 			pf := config.ProjectFile{
 				ProjectID: projectID,
-				CloseGate: config.DefaultCloseGate,
+				CloseGate: closeGate,
 			}
 			if d.Cfg.FrontendURL != config.DefaultFrontendURL {
 				pf.FrontendURL = d.Cfg.FrontendURL
@@ -211,14 +218,33 @@ issues after git push). If .devdash already exists, link leaves it alone.`,
 				return fmt.Errorf("failed to write %s: %w", devdashPath, err)
 			}
 
-			fmt.Printf("Wrote %s\n", devdashPath)
+			fmt.Printf("Wrote %s (close_gate: %s%s)\n", devdashPath, closeGate, gateNote)
 			fmt.Println()
 			fmt.Println("Next: run `devdash agent-setup` to configure your AI agent, or `devdash create` to add your first issue.")
 			return nil
 		},
 	}
 	cmd.Flags().Bool("here", false, "Link the current directory instead of the repo root")
+	cmd.Flags().String("close-on", "", "When to close issues: push or commit (default: push, or commit if the repo has no git remote)")
 	return cmd
+}
+
+// chooseCloseGate picks close_gate: an explicit --close-on wins; otherwise
+// "push", or "commit" when there is no remote to push to.
+func chooseCloseGate(closeOn string, hasRemote bool) (gate, note string) {
+	switch {
+	case closeOn != "":
+		return closeOn, ""
+	case !hasRemote:
+		return "commit", " — no git remote, so close issues after git commit"
+	default:
+		return config.DefaultCloseGate, ""
+	}
+}
+
+func hasGitRemote() bool {
+	out, err := exec.Command("git", "remote").Output()
+	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
 // samePath compares directories after resolving symlinks (e.g. /tmp vs /private/tmp).
