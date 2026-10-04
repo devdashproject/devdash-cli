@@ -3,6 +3,9 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/devdashproject/devdash-cli/internal/config"
+	"os"
+	"path/filepath"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/spf13/cobra"
@@ -23,6 +26,8 @@ your workspace.`,
 
 	createCmd := &cobra.Command{
 		Use: "create", Short: "Create a new project",
+		Long: `Create a new project. Pass --link to also link the current git repo to
+it (same as running 'devdash link <id>' afterwards).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := d.requireAuth(); err != nil {
 				return err
@@ -45,12 +50,29 @@ your workspace.`,
 			var project api.Project
 			_ = json.Unmarshal(data, &project)
 			fmt.Printf("Created project %s: %s\n", project.ID, project.Name)
+
+			if link, _ := cmd.Flags().GetBool("link"); link {
+				linkCmd, _, err := cmd.Root().Find([]string{"link"})
+				if err != nil || linkCmd.RunE == nil {
+					return fmt.Errorf("could not run link: %v", err)
+				}
+				fmt.Println()
+				return linkCmd.RunE(linkCmd, []string{project.ID})
+			}
+			if root, err := gitRepoRoot(); err == nil {
+				if _, statErr := os.Stat(filepath.Join(root, config.ProjectFileName)); statErr != nil {
+					fmt.Printf("\nNext: link this repo to it: devdash link %s\n", shortID(project.ID))
+				}
+			} else {
+				fmt.Printf("\nNext: run 'devdash link %s' in your repo, or pass --project=%s to commands\n", shortID(project.ID), shortID(project.ID))
+			}
 			return nil
 		},
 	}
 	createCmd.Flags().String("name", "", "Project name (required)")
 	createCmd.Flags().String("repo", "", "GitHub repo (owner/repo format)")
 	createCmd.Flags().String("description", "", "Project description")
+	createCmd.Flags().Bool("link", false, "Also link the current git repo to the new project")
 	projectCmd.AddCommand(createCmd)
 
 	projectCmd.AddCommand(&cobra.Command{

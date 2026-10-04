@@ -121,6 +121,11 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			// "Create" returns an existing sample project so link can resolve it
+			json.NewEncoder(w).Encode(apiPkg.SampleProjects()[1])
+			return
+		}
 		json.NewEncoder(w).Encode(apiPkg.SampleProjects())
 	})
 
@@ -1217,5 +1222,24 @@ func TestCommentTextAsArgument(t *testing.T) {
 	_, err := run("comment", "aaaa0000")
 	if err == nil || !strings.Contains(err.Error(), "--body") || !strings.Contains(err.Error(), `"text"`) {
 		t.Errorf("missing text error should show both forms, got: %v", err)
+	}
+}
+
+func TestProjectCreateSuggestsLinkAndLinks(t *testing.T) {
+	dir := newLinkRepo(t)
+	withClosedStdin(t)
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("project", "create", "--name=project-one")
+	if err != nil || !strings.Contains(out, "Next: link this repo to it: devdash link proj-000") {
+		t.Errorf("project create should suggest link, got %q (%v)", out, err)
+	}
+	if linkedProjectID(t, dir) != "" {
+		t.Error("project create without --link must not write .devdash")
+	}
+	if out, err := run("project", "create", "--name=project-one", "--link"); err != nil {
+		t.Fatalf("project create --link failed: %v\n%s", err, out)
+	}
+	if got := linkedProjectID(t, dir); got != "proj-0001-0000-0000-000000000001" {
+		t.Errorf("--link should link the new project, got %q", got)
 	}
 }
