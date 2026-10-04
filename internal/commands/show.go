@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +40,11 @@ to other tools like jq. Add --pretty for a short human-readable view.`,
 			// JSON by default (the raw API response, so new server fields appear automatically)
 			pretty, _ := cmd.Flags().GetBool("pretty")
 			printOutput(data, pretty, prettyBead)
+			if pretty {
+				if beads, err := api.FetchAll[api.Bead](d.Client, "/beads?projectId="+pid); err == nil {
+					fmt.Print(prettyChildren(beads, uuid))
+				}
+			}
 			return nil
 		},
 	}

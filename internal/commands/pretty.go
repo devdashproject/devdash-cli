@@ -1,9 +1,13 @@
 package commands
 
 import (
+	"sort"
+
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/output"
 	"strings"
 )
 
@@ -190,4 +194,24 @@ func firstNonEmptyStr(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// prettyChildren lists a parent's children for show --pretty, in list order.
+func prettyChildren(beads []api.Bead, parentID string) string {
+	var kids []api.Bead
+	for _, b := range beads {
+		if b.ParentBeadID == parentID {
+			kids = append(kids, b)
+		}
+	}
+	if len(kids) == 0 {
+		return ""
+	}
+	sort.SliceStable(kids, func(i, j int) bool { return listLess(kids[i], kids[j]) })
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "\nChildren (%d):\n", len(kids))
+	for _, k := range kids {
+		sb.WriteString("  " + output.FormatListLine(k) + "\n")
+	}
+	return sb.String()
 }
