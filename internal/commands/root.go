@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -135,11 +136,20 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	return rootCmd
 }
 
+// silentError makes the command exit nonzero without printing anything more,
+// for commands that already reported the problem themselves.
+type silentError struct{ msg string }
+
+func (e *silentError) Error() string { return e.msg }
+
 // Execute creates the root command and runs it.
 func Execute() {
 	rootCmd := NewRootCmd(nil)
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", maskSecrets(err.Error()))
+		var silent *silentError
+		if !errors.As(err, &silent) {
+			fmt.Fprintf(os.Stderr, "%v\n", maskSecrets(err.Error()))
+		}
 		os.Exit(1)
 	}
 }

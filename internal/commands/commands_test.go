@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1105,5 +1106,22 @@ func TestHelpPRUsesLinkedProject(t *testing.T) {
 	out, _ = run("help", "pr")
 	if !strings.Contains(out, "<project-id>") {
 		t.Errorf("help pr should show a placeholder when unlinked, got:\n%s", out)
+	}
+}
+
+func TestDoctorFailureIsSilentError(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", dir)
+	t.Setenv("DD_TOKEN_FILE", filepath.Join(dir, "token"))
+	t.Setenv("DEVDASH_TOKEN", "")
+	t.Chdir(dir)
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("doctor")
+	var silent *silentError
+	if !errors.As(err, &silent) {
+		t.Fatalf("doctor should fail with a silentError (already printed), got: %v", err)
+	}
+	if strings.Count(out, "issue(s) found") != 1 {
+		t.Errorf("summary should print once, got:\n%s", out)
 	}
 }
