@@ -17,7 +17,7 @@ func newListCmd(d *Deps) *cobra.Command {
 		Long: `List all issues for the current project, sorted by priority.
 
 Results can be narrowed with --status (pending, in_progress, blocked,
-completed, or the shorthand open), --since (accepts relative durations
+completed, failed, archived, or the shorthand open), --since (accepts relative durations
 like 2h, 3d, 1w or an absolute YYYY-MM-DD date filtering on updatedAt),
 --parent (show only children of a specific bead ID), and --mine (show
 only beads assigned to you).
@@ -26,7 +26,9 @@ The "open" shorthand enumerates the whole active backlog in one call —
 pending, in_progress, and blocked beads together — so a whole-backlog
 sweep cannot miss one of those buckets.
 
-When no issues match the filters, a message is printed to stderr.`,
+When no issues match the filters, a message is printed to stderr.
+
+Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
@@ -92,7 +94,7 @@ When no issues match the filters, a message is printed to stderr.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, blocked, completed, open")
+	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, completed, blocked, failed, archived, or open (pending+in_progress+blocked)")
 	cmd.Flags().String("since", "", "Filter by updatedAt (Nh, Nd, Nw, or YYYY-MM-DD)")
 	cmd.Flags().String("parent", "", "Filter by parent bead ID")
 	cmd.Flags().Bool("mine", false, "Show only issues assigned to you")

@@ -2,6 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/devdashproject/devdash-cli/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -10,14 +13,18 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:   "help [topic]",
 		Short: "Help about devdash or a specific topic",
-		Long:  "Available topics: cli, workflow, close, pr, projects, report",
+		Long:  helpTopicList,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return rootCmd.Help()
 			}
 
-			if text, ok := helpTopics[args[0]]; ok {
-				fmt.Println(text)
+			topic := args[0]
+			if topic == "cross-project" {
+				topic = "projects"
+			}
+			if text, ok := helpTopics[topic]; ok {
+				fmt.Println(fillTopicPlaceholders(text))
 				return nil
 			}
 
@@ -26,13 +33,68 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 				return target.Help()
 			}
 
-			fmt.Printf("Unknown help topic: %s\n\nAvailable topics: cli, workflow, close, pr, projects, report\n", args[0])
-			return nil
+			return fmt.Errorf("unknown help topic or command: %s\n\n%s", maskSecrets(args[0]), helpTopicList)
 		},
 	})
 }
 
+// helpTopicList is shown by 'devdash help', 'help help', and unknown topics.
+const helpTopicList = `Help topics (devdash help <topic>):
+  auth            Logging in: browser, API token, DEVDASH_TOKEN
+  cli             Command reference with examples
+  workflow        Working through issues: claim, work, close
+  close           Writing a good close summary
+  pr              PR footer format for linking issues
+  cross-project   Dependencies and work across projects (alias: projects)
+  report          Reporting progress
+Or: devdash help <command>`
+
+// fillTopicPlaceholders substitutes the linked project's ID and frontend URL,
+// so copied examples point at the right project.
+func fillTopicPlaceholders(text string) string {
+	projectID := "<project-id>"
+	frontend := config.DefaultFrontendURL
+	if cfg, err := config.Load(); err == nil {
+		if cfg.ProjectID != "" {
+			projectID = cfg.ProjectID
+		}
+		frontend = cfg.FrontendURL
+	}
+	return strings.NewReplacer("{{PROJECT_ID}}", projectID, "{{FRONTEND_URL}}", frontend).Replace(text)
+}
+
 var helpTopics = map[string]string{
+	"auth": `# Authentication
+
+devdash needs an API token. Pick whichever fits your environment:
+
+## 1. Browser (interactive, default)
+  devdash login                 Opens sign-in in your browser, saves the token
+  devdash login --no-browser    Prints the URL instead of opening it
+                                (the browser must be on this same machine:
+                                it calls back to localhost)
+
+## 2. Existing API token (headless machines, CI, coding agents)
+  devdash login --token=dd_...                  Verify and save the token
+  echo "$TOKEN" | devdash login --with-token    Same, read from stdin
+                                                (keeps it out of shell history)
+
+## 3. Environment variable (nothing written to disk, no login needed)
+  export DEVDASH_TOKEN=dd_...
+
+## Getting a token
+  Run 'devdash token create "my laptop"' on a machine that is already
+  logged in, or create one in the web app under Settings.
+
+## Where tokens live
+  DEVDASH_TOKEN wins if set; otherwise the token file at
+  ~/.config/dev-dash/token (override with DD_TOKEN_FILE or DD_CONFIG_DIR).
+
+## Check, manage, log out
+  devdash doctor                         Shows token source and verifies it
+  devdash token list | token revoke <id> Manage tokens
+  rm ~/.config/dev-dash/token            Log out on this machine. This does NOT
+                                         revoke the token; run 'token revoke' too`,
 	"cli": `# DevDash CLI Reference
 
 ## Issue Tracking (Core)
@@ -156,7 +218,25 @@ var helpTopics = map[string]string{
   Always run devdash show <id> and check:
   - parentBeadId: understand the larger goal
   - blockedBy/blocks: understand ordering constraints
-  - preInstructions: agent-specific context`,
+  - preInstructions: agent-specific context
+
+## Automatic Behavior (done by the server)
+  - Starting an issue (--status=in_progress) assigns it to you and adds
+    a system comment. If its parent is pending, the parent moves to
+    in_progress too.
+  - Adding a dependency (dep add) sets the issue to "blocked"; it returns
+    to "pending" when everything it depends on is completed.
+  - When the last open child of a parent closes, the parent closes
+    automatically with no summary. close tells you when this happens;
+    add an overall summary with: devdash close <parent> --summary="..."
+  - Closing an already-closed issue replaces its summary, commit and PR.
+  - ready skips parents that still have open children: work the children.
+
+## close_gate (.devdash)
+  Written by link. "push" (default) means close after git push; "commit"
+  means close after git commit (e.g. repos with no remote). It shapes the
+  agent instructions from prime and agent-setup; the CLI does not block
+  closing either way.`,
 
 	"close": `# Close Summary Guide
 
@@ -185,7 +265,7 @@ read them to understand what happened.
   --commit=SHA           Git commit SHA
   --pr=URL               Pull request URL (if applicable)`,
 
-	"pr": "# Pull Request Format\n\n## DevDash Footer\nEvery PR should include a DevDash footer section:\n\n  ## DevDash\n  Project: `95ca3de0-7e4f-4f9e-9b17-36f5609cfa11`\n  Issues:\n  - [<issue-id>](https://dev-dash-blue.vercel.app/issue/<issue-id>)\n\nReplace <issue-id> with the full UUID of each devdash issue.\nIf the PR addresses multiple issues, list each on its own line.",
+	"pr": "# Pull Request Format\n\n## DevDash Footer\nEvery PR should include a DevDash footer section:\n\n  ## DevDash\n  Project: `{{PROJECT_ID}}`\n  Issues:\n  - [<issue-id>]({{FRONTEND_URL}}/issue/<issue-id>)\n\nReplace <issue-id> with the full UUID of each devdash issue.\nIf the PR addresses multiple issues, list each on its own line.",
 
 	"projects": `# Cross-Project Work
 

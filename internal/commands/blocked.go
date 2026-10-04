@@ -13,11 +13,12 @@ import (
 func newBlockedCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "blocked",
-		Short: "Pending issues with unsatisfied dependencies",
-		Long: `Show pending issues that are waiting on unfinished dependencies.
+		Short: "Issues waiting on unfinished dependencies",
+		Long: `Show issues that are waiting on unfinished dependencies.
 
-An issue is considered blocked when it has at least one dependency that
-has not yet been completed. Results are sorted by priority. Use this to
+An issue is blocked when the server has marked it "blocked" (it does this
+when a dependency is added) or when it is pending with at least one
+dependency that has not yet been completed. Results are sorted by priority. Use this to
 identify bottlenecks — the dependencies shown are what need to be
 completed before these issues can move forward.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,10 +41,7 @@ completed before these issues can move forward.`,
 
 			var blocked []api.Bead
 			for _, b := range beads {
-				if b.Status != "pending" || len(b.BlockedBy) == 0 {
-					continue
-				}
-				if isBlocked(b, completedIDs) {
+				if isEffectivelyBlocked(b, completedIDs) {
 					blocked = append(blocked, b)
 				}
 			}

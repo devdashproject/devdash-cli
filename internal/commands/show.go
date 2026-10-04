@@ -1,16 +1,12 @@
 package commands
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-
 	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
 
 func newShowCmd(d *Deps) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "show <id>",
 		Short: "Full issue detail",
 		Long: `Display the full detail for a single issue as pretty-printed JSON.
@@ -21,7 +17,7 @@ on the issue. Accepts short ID prefixes — the shortest unique prefix is
 enough to identify the issue.
 
 Useful for inspecting an issue's complete state or piping structured data
-to other tools like jq.`,
+to other tools like jq. Add --pretty for a short human-readable view.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
@@ -39,13 +35,12 @@ to other tools like jq.`,
 				return err
 			}
 
-			// Pretty-print the raw API response so new server fields appear automatically
-			var buf bytes.Buffer
-			if err := json.Indent(&buf, data, "", "  "); err != nil {
-				return fmt.Errorf("failed to format response: %w", err)
-			}
-			fmt.Println(buf.String())
+			// JSON by default (the raw API response, so new server fields appear automatically)
+			pretty, _ := cmd.Flags().GetBool("pretty")
+			printOutput(data, pretty, prettyBead)
 			return nil
 		},
 	}
+	cmd.Flags().Bool("pretty", false, "Human-readable view instead of JSON")
+	return cmd
 }

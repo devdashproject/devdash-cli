@@ -2,10 +2,14 @@ package config
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/devdashproject/devdash-cli/internal/api"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -14,6 +18,7 @@ func TestLoadDefaults(t *testing.T) {
 	os.Unsetenv("DD_API_URL")
 	os.Unsetenv("DD_CONFIG_DIR")
 	os.Unsetenv("DD_TOKEN_FILE")
+	t.Setenv("DD_CONFIG_DIR", t.TempDir())
 
 	cfg, err := Load()
 	if err != nil {
@@ -50,6 +55,7 @@ func TestLoadEnvOverrides(t *testing.T) {
 
 func TestLoadProjectFile(t *testing.T) {
 	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", t.TempDir())
 
 	pf := ProjectFile{
 		ProjectID:   "from-file",
@@ -76,11 +82,84 @@ func TestLoadProjectFile(t *testing.T) {
 	if cfg.ProjectID != "from-file" {
 		t.Errorf("ProjectID = %q, want %q", cfg.ProjectID, "from-file")
 	}
-	if cfg.APIURL != "https://custom-api.example.com" {
-		t.Errorf("APIURL = %q, want %q", cfg.APIURL, "https://custom-api.example.com")
+	if cfg.APIURL != DefaultAPIURL {
+		t.Errorf("repository APIURL = %q, want trusted default %q", cfg.APIURL, DefaultAPIURL)
 	}
 	if cfg.CloseGate != "commit" {
 		t.Errorf("CloseGate = %q, want %q", cfg.CloseGate, "commit")
+	}
+}
+
+func TestRepositoryAPIURLCannotReceiveToken(t *testing.T) {
+	trustedHits, attackerHits := 0, 0
+	trusted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trustedHits++
+		if got := r.Header.Get("Authorization"); got != "Bearer test-secret" {
+			t.Errorf("trusted endpoint received auth %q", got)
+		}
+		w.Write([]byte(`{}`))
+	}))
+	defer trusted.Close()
+	attackerHTTP := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { attackerHits++ }))
+	defer attackerHTTP.Close()
+	attackerHTTPS := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { attackerHits++ }))
+	defer attackerHTTPS.Close()
+
+	for _, attackerURL := range []string{attackerHTTP.URL, attackerHTTPS.URL} {
+		t.Run(attackerURL, func(t *testing.T) {
+			dir := t.TempDir()
+			settingsDir := t.TempDir()
+			t.Setenv("DD_CONFIG_DIR", settingsDir)
+			t.Setenv("DD_API_URL", "")
+			settings, _ := json.Marshal(map[string]string{"api_url": trusted.URL})
+			if err := os.WriteFile(filepath.Join(settingsDir, SettingsFileName), settings, 0600); err != nil {
+				t.Fatal(err)
+			}
+			project, _ := json.Marshal(ProjectFile{ProjectID: "repo-project", APIURL: attackerURL})
+			if err := os.WriteFile(filepath.Join(dir, ProjectFileName), project, 0644); err != nil {
+				t.Fatal(err)
+			}
+			old, _ := os.Getwd()
+			if err := os.Chdir(dir); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Chdir(old)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.ProjectID != "repo-project" || cfg.APIURL != trusted.URL || cfg.APIURLSource != filepath.Join(settingsDir, SettingsFileName) {
+				t.Fatalf("untrusted repo URL affected configuration: %+v", cfg)
+			}
+			client := api.New(cfg.APIURL, "test-secret", "test")
+			if _, err := client.Get("/projects"); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	if attackerHits != 0 || trustedHits != 2 {
+		t.Fatalf("attacker requests = %d, trusted requests = %d", attackerHits, trustedHits)
+	}
+}
+
+func TestExplicitAPIURLOverride(t *testing.T) {
+	t.Setenv("DD_CONFIG_DIR", t.TempDir())
+	t.Setenv("DD_API_URL", "https://custom-api.example.com")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.APIURL != "https://custom-api.example.com" || cfg.APIURLSource != "DD_API_URL environment variable" {
+		t.Fatalf("explicit override not distinguished: %+v", cfg)
+	}
+}
+
+func TestInsecureRemoteOverrideRejected(t *testing.T) {
+	t.Setenv("DD_CONFIG_DIR", t.TempDir())
+	t.Setenv("DD_API_URL", "http://evil.example")
+	if _, err := Load(); err == nil {
+		t.Fatal("remote plain HTTP accepted")
 	}
 }
 
@@ -161,5 +240,32 @@ func TestRequireProjectID(t *testing.T) {
 	}
 	if pid != "proj-123" {
 		t.Errorf("projectID = %q, want %q", pid, "proj-123")
+	}
+}
+
+func TestLoadTokenFromEnvVar(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", dir)
+	t.Setenv("DD_TOKEN_FILE", filepath.Join(dir, "token"))
+	if err := os.WriteFile(filepath.Join(dir, "token"), []byte("dd_fromfile"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(TokenEnvVar, "dd_fromenv")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Token != "dd_fromenv" || cfg.TokenSource != "DEVDASH_TOKEN env var" {
+		t.Errorf("env var should win: token=%q source=%q", cfg.Token, cfg.TokenSource)
+	}
+
+	t.Setenv(TokenEnvVar, "")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Token != "dd_fromfile" || cfg.TokenSource != filepath.Join(dir, "token") {
+		t.Errorf("file fallback: token=%q source=%q", cfg.Token, cfg.TokenSource)
 	}
 }

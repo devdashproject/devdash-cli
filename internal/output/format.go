@@ -16,6 +16,7 @@ const (
 	IconFailed     = "✗"
 	IconStale      = "⚠"
 	IconSkipped    = "⊘"
+	IconBlocked    = "⊘"
 )
 
 // StatusIcon returns the icon for a bead status.
@@ -29,6 +30,8 @@ func StatusIcon(status string) string {
 		return IconCompleted
 	case "failed":
 		return IconFailed
+	case "blocked":
+		return IconBlocked
 	default:
 		return IconPending
 	}
@@ -80,8 +83,11 @@ func FormatListLine(b api.Bead) string {
 // FormatBlockedLine formats a bead for the `blocked` command output.
 func FormatBlockedLine(b api.Bead) string {
 	blockers := strings.Join(shortIDs(b.BlockedBy), ", ")
+	if blockers == "" {
+		blockers = "(none listed)"
+	}
 	return fmt.Sprintf("%s %s [P%d] - %s  blocked by: %s",
-		IconPending, beadID(b), b.Priority, b.Subject, blockers)
+		IconBlocked, beadID(b), b.Priority, b.Subject, blockers)
 }
 
 // FormatStaleLine formats a bead for the `stale` command output.
@@ -91,9 +97,14 @@ func FormatStaleLine(b api.Bead) string {
 }
 
 // FormatStats formats project statistics.
-func FormatStats(total, pending, inProgress, completed, blocked, ready int) string {
-	return fmt.Sprintf("Total:       %d\nPending:     %d\nIn Progress: %d\nCompleted:   %d\nBlocked:     %d\nReady:       %d",
+// other counts statuses outside pending/in_progress/completed/blocked (failed, archived, ...).
+func FormatStats(total, pending, inProgress, completed, blocked, ready, other int) string {
+	s := fmt.Sprintf("Total:       %d\nPending:     %d\nIn Progress: %d\nCompleted:   %d\nBlocked:     %d\nReady:       %d",
 		total, pending, inProgress, completed, blocked, ready)
+	if other > 0 {
+		s += fmt.Sprintf("\nOther:       %d  (failed/archived/etc.)", other)
+	}
+	return s
 }
 
 // FormatJobLine formats a job for listing.

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devdashproject/devdash-cli/internal/api"
 	"github.com/spf13/cobra"
 )
 
@@ -27,13 +28,19 @@ func newAdminCmd(d *Deps) *cobra.Command {
 			if d.Cfg == nil {
 				return fmt.Errorf("configuration not loaded")
 			}
+			if err := api.ValidateEndpoint(d.Cfg.APIURL); err != nil {
+				return fmt.Errorf("invalid API endpoint: %w", err)
+			}
 
 			url := d.Cfg.APIURL + "/api/admin/reset-user/" + args[0]
-			req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("{}")))
+			req, err := http.NewRequest("POST", url, bytes.NewReader([]byte("{}")))
+			if err != nil {
+				return fmt.Errorf("failed to create request: %w", err)
+			}
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("x-admin-secret", secret)
 
-			resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+			resp, err := (&http.Client{Timeout: 30 * time.Second, CheckRedirect: api.SameOriginRedirect}).Do(req)
 			if err != nil {
 				return fmt.Errorf("request failed: %w", err)
 			}

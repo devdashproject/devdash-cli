@@ -143,7 +143,7 @@ func TestFormatBlockedLine(t *testing.T) {
 }
 
 func TestFormatStats(t *testing.T) {
-	out := FormatStats(10, 5, 2, 3, 1, 4)
+	out := FormatStats(10, 5, 2, 3, 1, 4, 0)
 	if !strings.Contains(out, "Total:       10") {
 		t.Errorf("should contain Total, got: %s", out)
 	}

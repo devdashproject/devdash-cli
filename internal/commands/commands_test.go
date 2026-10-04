@@ -3,9 +3,11 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -139,9 +141,12 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 	mux.HandleFunc("/api/auth/tokens", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			json.NewEncoder(w).Encode([]map[string]string{{"id": "tok-1", "name": "test"}})
+			w.Write([]byte(`[{"id":"tok-1","name":"test","revokedAt":null},{"id":"tok-2","name":"old","revokedAt":"2026-09-15T10:00:00.000Z"}]`))
 		case "POST":
-			json.NewEncoder(w).Encode(map[string]string{"id": "tok-new", "token": "dd_secret"})
+			var req map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&req)
+			name, _ := req["name"].(string)
+			json.NewEncoder(w).Encode(map[string]string{"id": "tok-new", "token": "dd_secret", "name": name})
 		}
 	})
 
@@ -681,7 +686,7 @@ func TestDiagnoseCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diagnose failed: %v", err)
 	}
-	if !strings.Contains(out, "── Bead ──") {
+	if !strings.Contains(out, "── Issue ──") {
 		t.Errorf("should contain bead header, got: %s", out)
 	}
 	if !strings.Contains(out, "Ready task") {
@@ -718,6 +723,23 @@ func TestTokenCreateCommand(t *testing.T) {
 	}
 	if !strings.Contains(out, "tok-new") {
 		t.Errorf("should contain new token ID, got: %s", out)
+	}
+	if !strings.Contains(out, "my-token") {
+		t.Errorf("should echo the given name, got: %s", out)
+	}
+}
+
+func TestTokenCreateCommandWithoutName(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("token", "create")
+	if err != nil {
+		t.Fatalf("token create without a name should succeed, got: %v", err)
+	}
+	if !strings.Contains(out, "tok-new") {
+		t.Errorf("should contain new token ID, got: %s", out)
+	}
+	if strings.Contains(out, `"name": ""`) {
+		t.Errorf("should generate a non-empty default name, got: %s", out)
 	}
 }
 
@@ -1056,11 +1078,130 @@ func TestHelpTopicCLIDescriptions(t *testing.T) {
 
 func TestHelpTopicUnknown(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
-	out, err := run("help", "nonexistent")
-	if err != nil {
-		t.Fatalf("help nonexistent failed: %v", err)
+	_, err := run("help", "nonexistent")
+	if err == nil {
+		t.Fatal("help nonexistent should fail so agents can detect it")
 	}
-	if !strings.Contains(out, "Unknown help topic") {
-		t.Errorf("should show unknown topic message, got: %s", out)
+	if !strings.Contains(err.Error(), "unknown help topic") || !strings.Contains(err.Error(), "auth") {
+		t.Errorf("should name the unknown topic and list topics, got: %v", err)
+	}
+}
+
+func TestHelpTopicAuth(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "auth")
+	if err != nil {
+		t.Fatalf("help auth failed: %v", err)
+	}
+	for _, want := range []string{"login --token", "--with-token", "DEVDASH_TOKEN", "token create"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("help auth missing %q", want)
+		}
+	}
+}
+
+func TestNotLoggedInHint(t *testing.T) {
+	cfg := &config.Config{}
+	_, err := cfg.RequireToken()
+	if err == nil {
+		t.Fatal("expected error without token")
+	}
+	for _, want := range []string{"devdash login --token", "DEVDASH_TOKEN", "help auth"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("not-logged-in hint missing %q: %v", want, err)
+		}
+	}
+}
+
+func TestMaskSecrets(t *testing.T) {
+	if got := maskSecrets("unknown command \"dd_abcdef0123456789\""); strings.Contains(got, "dd_abcdef0123456789") {
+		t.Errorf("token not masked: %s", got)
+	}
+}
+
+func TestTokenListActiveHidesRevoked(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("token", "list")
+	if err != nil {
+		t.Fatalf("token list failed: %v", err)
+	}
+	if !strings.Contains(out, "tok-2") {
+		t.Errorf("token list should include revoked tokens: %s", out)
+	}
+	out, err = run("token", "list", "--active")
+	if err != nil {
+		t.Fatalf("token list --active failed: %v", err)
+	}
+	if strings.Contains(out, "tok-2") || !strings.Contains(out, "tok-1") {
+		t.Errorf("--active should hide revoked tokens: %s", out)
+	}
+}
+
+func TestHelpPRUsesLinkedProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".devdash"), []byte(`{"project_id":"linked-proj-0000"}`), 0644)
+	t.Chdir(dir)
+	t.Setenv("DD_PROJECT_ID", "")
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "pr")
+	if err != nil {
+		t.Fatalf("help pr failed: %v", err)
+	}
+	if !strings.Contains(out, "linked-proj-0000") || strings.Contains(out, "95ca3de0") {
+		t.Errorf("help pr should show the linked project ID, got:\n%s", out)
+	}
+
+	t.Chdir(t.TempDir())
+	out, _ = run("help", "pr")
+	if !strings.Contains(out, "<project-id>") {
+		t.Errorf("help pr should show a placeholder when unlinked, got:\n%s", out)
+	}
+}
+
+func TestDoctorFailureIsSilentError(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", dir)
+	t.Setenv("DD_TOKEN_FILE", filepath.Join(dir, "token"))
+	t.Setenv("DEVDASH_TOKEN", "")
+	t.Chdir(dir)
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("doctor")
+	var silent *silentError
+	if !errors.As(err, &silent) {
+		t.Fatalf("doctor should fail with a silentError (already printed), got: %v", err)
+	}
+	if strings.Count(out, "issue(s) found") != 1 {
+		t.Errorf("summary should print once, got:\n%s", out)
+	}
+}
+
+func TestHelpListsTopicsAndSuggestsUpdateForClaim(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, _ := run("help")
+	for _, want := range []string{"Help topics", "auth", "cross-project"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("devdash help should list %q", want)
+		}
+	}
+	out, err := run("help", "cross-project")
+	if err != nil || !strings.Contains(out, "Cross-Project") {
+		t.Errorf("help cross-project should show the projects topic: %v", err)
+	}
+	_, err = run("claim", "abc")
+	if err == nil || !strings.Contains(err.Error(), "update") {
+		t.Errorf("claim should suggest update, got: %v", err)
+	}
+	if hint := unknownCommandHint(err); !strings.Contains(hint, "--status=in_progress") {
+		t.Errorf("claim hint should spell out the command, got %q", hint)
+	}
+}
+
+func TestUpdateAcceptsSubject(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	if _, err := run("update", "aaaa0000", "--subject=New name"); err != nil {
+		t.Errorf("update --subject failed: %v", err)
+	}
+	if _, err := run("update", "aaaa0000", "--subject=a", "--title=b"); err == nil {
+		t.Error("update with both --subject and --title should fail")
 	}
 }

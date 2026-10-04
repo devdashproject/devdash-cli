@@ -33,12 +33,18 @@ configuration and environment issues in one shot.`,
 				issues++
 			} else {
 				fmt.Printf("✓ Config directory: %s\n", c.ConfigDir)
+				fmt.Printf("✓ API endpoint: %s (source: %s)\n", c.APIURL, c.APIURLSource)
 			}
 
 			if c != nil && c.Token != "" {
-				fmt.Printf("✓ Token: present (%s)\n", c.TokenFilePath())
+				fmt.Printf("✓ Token: present (%s)\n", c.TokenSource)
 			} else {
-				fmt.Printf("✗ Token: not found — run 'devdash login'\n")
+				tokenPath := "the token file"
+				if c != nil {
+					tokenPath = c.TokenFilePath()
+				}
+				fmt.Printf("✗ Token: not found (checked %s env var and %s)\n", config.TokenEnvVar, tokenPath)
+				fmt.Printf("    fix: devdash login  |  devdash login --token=dd_...  |  see 'devdash help auth'\n")
 				issues++
 			}
 
@@ -75,7 +81,7 @@ configuration and environment issues in one shot.`,
 
 			if issues > 0 {
 				fmt.Printf("\n%d issue(s) found.\n", issues)
-				return fmt.Errorf("%d issue(s) found", issues)
+				return &silentError{fmt.Sprintf("%d issue(s) found", issues)}
 			}
 			fmt.Println("\nAll checks passed.")
 			return nil

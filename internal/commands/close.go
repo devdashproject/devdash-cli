@@ -10,17 +10,22 @@ import (
 
 func newCloseCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "close <id> [<id>...]",
-		Short: "Close one or more issues",
+		Use:        "close <id> [<id>...]",
+		Short:      "Close one or more issues",
+		SuggestFor: []string{"done", "finish", "complete", "resolve"},
 		Long: `Close one or more issues, marking them as completed.
 
 Accepts one or multiple issue IDs (short prefixes work). Optionally attach
-a completion summary, the git commit SHA, and a pull request URL. When
-closing a single issue, uses a direct PATCH; multiple IDs are sent as a
-bulk close request.
+a completion summary, the git commit SHA, and a pull request URL; with
+several IDs, the same summary, commit and PR apply to each.
 
 Best practice: close after "git push" succeeds, and always include
---summary with context for future readers.`,
+--summary with context for future readers.
+
+When the last open child of a parent closes, the server closes the
+parent automatically, without a summary; close reports this so you can
+add one. Closing an issue that is already closed replaces its summary,
+commit and PR.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
@@ -34,7 +39,7 @@ Best practice: close after "git push" succeeds, and always include
 
 			var cr *api.CompletionResult
 			if pr != "" || commit != "" || summary != "" {
-				cr = &api.CompletionResult{Summary: summary, PR: pr, Commit: commit}
+				cr = &api.CompletionResult{Summary: summary, PRURL: pr, CommitSHA: commit}
 			}
 
 			beads, err := api.FetchAll[api.Bead](d.Client, "/beads?projectId="+pid)
@@ -57,13 +62,13 @@ Best practice: close after "git push" succeeds, and always include
 				if err != nil {
 					return err
 				}
-				fmt.Printf("Closed: %s\n", uuids[0])
+				printCloseResults(d, pid, uuids, beads, cr != nil)
 				return nil
 			}
 
 			items := make([]api.BulkCloseItem, len(uuids))
 			for i, uuid := range uuids {
-				items[i] = api.BulkCloseItem{ID: uuid, CompletionResult: cr}
+				items[i] = api.BulkCloseItem{ID: uuid, Summary: summary, CommitSHA: commit, PRURL: pr}
 			}
 
 			_, err = d.Client.Post("/beads/bulk/close", api.BulkCloseRequest{ProjectID: pid, Beads: items})
@@ -71,9 +76,7 @@ Best practice: close after "git push" succeeds, and always include
 				return err
 			}
 
-			for _, uuid := range uuids {
-				fmt.Printf("Closed: %s\n", uuid)
-			}
+			printCloseResults(d, pid, uuids, beads, cr != nil)
 			return nil
 		},
 	}
@@ -81,4 +84,41 @@ Best practice: close after "git push" succeeds, and always include
 	cmd.Flags().String("commit", "", "Git commit SHA")
 	cmd.Flags().String("summary", "", "Completion summary")
 	return cmd
+}
+
+// printCloseResults reports each close, flags issues that were already
+// closed, and points out parents the server auto-closed without a summary.
+func printCloseResults(d *Deps, pid string, uuids []string, before []api.Bead, withDetails bool) {
+	byID := make(map[string]api.Bead, len(before))
+	for _, b := range before {
+		byID[b.ID] = b
+	}
+
+	parents := []string{}
+	seen := map[string]bool{}
+	for _, uuid := range uuids {
+		b := byID[uuid]
+		if b.Status == "completed" {
+			if withDetails {
+				fmt.Printf("Updated: %s (already closed; its summary, commit and PR were replaced)\n", uuid)
+			} else {
+				fmt.Printf("Already closed: %s\n", uuid)
+			}
+		} else {
+			fmt.Printf("Closed: %s\n", uuid)
+		}
+		if p := b.ParentBeadID; p != "" && !seen[p] && byID[p].Status != "completed" {
+			seen[p] = true
+			parents = append(parents, p)
+		}
+	}
+
+	for _, p := range parents {
+		parent, err := api.JSON[api.Bead](d.Client.Get("/beads/" + p + "?projectId=" + pid))
+		if err != nil || parent.Status != "completed" {
+			continue
+		}
+		fmt.Printf("Parent %s %q closed automatically: all its children are done.\n", shortID(p), parent.Subject)
+		fmt.Printf("  Add an overall summary: devdash close %s --summary=\"...\"\n", shortID(p))
+	}
 }
