@@ -71,3 +71,18 @@ func TestCompletionResultDecodesLegacyKeys(t *testing.T) {
 		t.Errorf("should re-encode with server keys: %s", out)
 	}
 }
+
+func TestBulkCloseSendsFlatFields(t *testing.T) {
+	body := runRecordingClose(t, "aaaa0000", "dddd0000", "--summary=done", "--commit=abc123", "--pr=https://example.com/pr/1")
+	beads, ok := body["beads"].([]interface{})
+	if !ok || len(beads) != 2 {
+		t.Fatalf("expected 2 beads in bulk body: %v", body)
+	}
+	item := beads[0].(map[string]interface{})
+	if item["summary"] != "done" || item["commitSha"] != "abc123" || item["prUrl"] != "https://example.com/pr/1" {
+		t.Errorf("bulk item should carry flat completion fields: %v", item)
+	}
+	if _, nested := item["completionResult"]; nested {
+		t.Errorf("server strips nested completionResult; send flat fields: %v", item)
+	}
+}

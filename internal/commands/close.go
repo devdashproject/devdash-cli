@@ -63,7 +63,7 @@ Best practice: close after "git push" succeeds, and always include
 
 			items := make([]api.BulkCloseItem, len(uuids))
 			for i, uuid := range uuids {
-				items[i] = api.BulkCloseItem{ID: uuid, CompletionResult: cr}
+				items[i] = api.BulkCloseItem{ID: uuid, Summary: summary, CommitSHA: commit, PRURL: pr}
 			}
 
 			_, err = d.Client.Post("/beads/bulk/close", api.BulkCloseRequest{ProjectID: pid, Beads: items})

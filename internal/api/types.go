@@ -242,10 +242,13 @@ type BulkCloseRequest struct {
 	Beads     []BulkCloseItem `json:"beads"`
 }
 
-// BulkCloseItem is a single bead in a bulk close.
+// BulkCloseItem is a single bead in a bulk close. The server expects completion
+// fields flat on each item, not nested in a completionResult object.
 type BulkCloseItem struct {
-	ID               string            `json:"id"`
-	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
+	ID        string `json:"id"`
+	Summary   string `json:"summary,omitempty"`
+	CommitSHA string `json:"commitSha,omitempty"`
+	PRURL     string `json:"prUrl,omitempty"`
 }
 
 // ReportRequest is the body for POST /beads/{id}/report.
