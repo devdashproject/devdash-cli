@@ -1205,3 +1205,17 @@ func TestUpdateAcceptsSubject(t *testing.T) {
 		t.Error("update with both --subject and --title should fail")
 	}
 }
+
+func TestCommentTextAsArgument(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	if out, err := run("comment", "aaaa0000", "positional text"); err != nil || !strings.Contains(out, "Commented on") {
+		t.Errorf("comment <id> \"text\" should work, got %q (%v)", out, err)
+	}
+	if _, err := run("comment", "aaaa0000", "a", "--body=b"); err == nil {
+		t.Error("text given twice should fail")
+	}
+	_, err := run("comment", "aaaa0000")
+	if err == nil || !strings.Contains(err.Error(), "--body") || !strings.Contains(err.Error(), `"text"`) {
+		t.Errorf("missing text error should show both forms, got: %v", err)
+	}
+}
