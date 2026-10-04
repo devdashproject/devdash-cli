@@ -61,7 +61,8 @@ devdash needs an API token. Pick whichever fits your environment:
 ## Check, manage, log out
   devdash doctor                         Shows token source and verifies it
   devdash token list | token revoke <id> Manage tokens
-  rm ~/.config/dev-dash/token            Log out (and revoke the token)`,
+  rm ~/.config/dev-dash/token            Log out on this machine. This does NOT
+                                         revoke the token; run 'token revoke' too`,
 	"cli": `# DevDash CLI Reference
 
 ## Issue Tracking (Core)
