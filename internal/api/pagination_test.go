@@ -21,7 +21,6 @@ func TestFetchAllSinglePage(t *testing.T) {
 	defer server.Close()
 
 	client := New(server.URL, "token", "test")
-	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")
 	if err != nil {
@@ -55,7 +54,6 @@ func TestFetchAllMultiplePages(t *testing.T) {
 	defer server.Close()
 
 	client := New(server.URL, "token", "test")
-	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")
 	if err != nil {
@@ -81,7 +79,6 @@ func TestFetchAllPlainArray(t *testing.T) {
 	defer server.Close()
 
 	client := New(server.URL, "token", "test")
-	client.BaseURL = server.URL + "/api"
 
 	items, err := FetchAll[Item](client, "/items")
 	if err != nil {

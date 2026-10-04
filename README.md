@@ -152,7 +152,9 @@ cd my-project && devdash init    # Links this repo
 cd other-repo && devdash init    # Links that repo separately
 ```
 
-You can also set `DD_PROJECT_ID` and `DD_API_URL` environment variables to override, or use the `--project` flag on any command.
+You can also set `DD_PROJECT_ID` to choose a project or use the `--project` flag on any command. The CLI reads `project_id` from `.devdash`, but deliberately ignores `api_url` in that repository file: a repository can be controlled by someone else and must not choose where your saved bearer token goes.
+
+For a self-hosted API, set `DD_API_URL` explicitly or put `{"api_url":"https://your-api.example"}` in `~/.config/dev-dash/settings.json` (or `$DD_CONFIG_DIR/settings.json`). The environment variable takes precedence. Credentialed endpoints must use HTTPS, except `http://localhost` or a loopback IP for local development. Redirects to a different origin are rejected. Run `devdash doctor` to see which endpoint source is active.
 
 ## Troubleshooting
 

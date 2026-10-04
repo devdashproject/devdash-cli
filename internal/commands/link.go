@@ -196,18 +196,11 @@ issues after git push). If .devdash already exists, link leaves it alone.`,
 				}
 			}
 
-			// Write .devdash. Only persist APIURL/FrontendURL when they differ
-			// from the compiled-in defaults (e.g. DD_API_URL points at a
-			// self-hosted or local instance) -- otherwise a snapshot of
-			// today's default gets pinned into the file forever, silently
-			// overriding any future default change (e.g. a prod rename) even
-			// after the CLI itself is upgraded.
+			// The repository file may be committed and shared. Keep the
+			// credentialed API endpoint in user-owned settings or DD_API_URL.
 			pf := config.ProjectFile{
 				ProjectID: projectID,
 				CloseGate: config.DefaultCloseGate,
-			}
-			if d.Cfg.APIURL != config.DefaultAPIURL {
-				pf.APIURL = d.Cfg.APIURL
 			}
 			if d.Cfg.FrontendURL != config.DefaultFrontendURL {
 				pf.FrontendURL = d.Cfg.FrontendURL

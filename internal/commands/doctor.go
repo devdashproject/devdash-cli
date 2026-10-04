@@ -33,6 +33,7 @@ configuration and environment issues in one shot.`,
 				issues++
 			} else {
 				fmt.Printf("✓ Config directory: %s\n", c.ConfigDir)
+				fmt.Printf("✓ API endpoint: %s (source: %s)\n", c.APIURL, c.APIURLSource)
 			}
 
 			if c != nil && c.Token != "" {

@@ -116,6 +116,61 @@ func TestClientNoToken(t *testing.T) {
 	}
 }
 
+func TestCrossOriginRedirectDoesNotLeakToken(t *testing.T) {
+	attackerHits := 0
+	attacker := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attackerHits++
+		if r.Header.Get("Authorization") != "" {
+			t.Error("token reached redirect target")
+		}
+	}))
+	defer attacker.Close()
+	trusted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-secret" {
+			t.Error("trusted endpoint lost token")
+		}
+		http.Redirect(w, r, attacker.URL+"/steal", http.StatusFound)
+	}))
+	defer trusted.Close()
+	client := New(trusted.URL, "test-secret", "test")
+	if _, err := client.Get("/projects"); err == nil || !strings.Contains(err.Error(), "cross-origin redirect rejected") {
+		t.Fatalf("cross-origin redirect was not rejected: %v", err)
+	}
+	if attackerHits != 0 {
+		t.Fatalf("attacker received %d requests", attackerHits)
+	}
+}
+
+func TestSameOriginRedirectKeepsToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-secret" {
+			t.Error("same-origin request lost token")
+		}
+		if r.URL.Path == "/api/start" {
+			http.Redirect(w, r, "/api/end", http.StatusFound)
+			return
+		}
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	if _, err := New(server.URL, "test-secret", "test").Get("/start"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEndpointValidation(t *testing.T) {
+	for _, raw := range []string{"https://custom.example", "http://localhost:3000", "http://127.0.0.1:3000", "http://[::1]:3000"} {
+		if err := ValidateEndpoint(raw); err != nil {
+			t.Errorf("rejected %q: %v", raw, err)
+		}
+	}
+	for _, raw := range []string{"http://evil.example", "http://localhost.evil.example", "https://u:p@custom.example", "https://custom.example/path", "https://custom.example?token=abc", "file:///tmp/api", "https://custom.example:99999"} {
+		if err := ValidateEndpoint(raw); err == nil {
+			t.Errorf("accepted %q", raw)
+		}
+	}
+}
+
 func TestJSONGeneric(t *testing.T) {
 	data := []byte(`{"id": "test-123", "subject": "Hello"}`)
 
