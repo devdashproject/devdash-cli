@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1083,5 +1084,26 @@ func TestTokenListActiveHidesRevoked(t *testing.T) {
 	}
 	if strings.Contains(out, "tok-2") || !strings.Contains(out, "tok-1") {
 		t.Errorf("--active should hide revoked tokens: %s", out)
+	}
+}
+
+func TestHelpPRUsesLinkedProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".devdash"), []byte(`{"project_id":"linked-proj-0000"}`), 0644)
+	t.Chdir(dir)
+	t.Setenv("DD_PROJECT_ID", "")
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "pr")
+	if err != nil {
+		t.Fatalf("help pr failed: %v", err)
+	}
+	if !strings.Contains(out, "linked-proj-0000") || strings.Contains(out, "95ca3de0") {
+		t.Errorf("help pr should show the linked project ID, got:\n%s", out)
+	}
+
+	t.Chdir(t.TempDir())
+	out, _ = run("help", "pr")
+	if !strings.Contains(out, "<project-id>") {
+		t.Errorf("help pr should show a placeholder when unlinked, got:\n%s", out)
 	}
 }

@@ -2,6 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/devdashproject/devdash-cli/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +20,7 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 			}
 
 			if text, ok := helpTopics[args[0]]; ok {
-				fmt.Println(text)
+				fmt.Println(fillTopicPlaceholders(text))
 				return nil
 			}
 
@@ -29,6 +32,20 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 			return fmt.Errorf("unknown help topic or command: %s\n\nAvailable topics: auth, cli, workflow, close, pr, projects, report\nOr: devdash help <command>", maskSecrets(args[0]))
 		},
 	})
+}
+
+// fillTopicPlaceholders substitutes the linked project's ID and frontend URL,
+// so copied examples point at the right project.
+func fillTopicPlaceholders(text string) string {
+	projectID := "<project-id>"
+	frontend := config.DefaultFrontendURL
+	if cfg, err := config.Load(); err == nil {
+		if cfg.ProjectID != "" {
+			projectID = cfg.ProjectID
+		}
+		frontend = cfg.FrontendURL
+	}
+	return strings.NewReplacer("{{PROJECT_ID}}", projectID, "{{FRONTEND_URL}}", frontend).Replace(text)
 }
 
 var helpTopics = map[string]string{
@@ -215,7 +232,7 @@ read them to understand what happened.
   --commit=SHA           Git commit SHA
   --pr=URL               Pull request URL (if applicable)`,
 
-	"pr": "# Pull Request Format\n\n## DevDash Footer\nEvery PR should include a DevDash footer section:\n\n  ## DevDash\n  Project: `95ca3de0-7e4f-4f9e-9b17-36f5609cfa11`\n  Issues:\n  - [<issue-id>](https://dev-dash-blue.vercel.app/issue/<issue-id>)\n\nReplace <issue-id> with the full UUID of each devdash issue.\nIf the PR addresses multiple issues, list each on its own line.",
+	"pr": "# Pull Request Format\n\n## DevDash Footer\nEvery PR should include a DevDash footer section:\n\n  ## DevDash\n  Project: `{{PROJECT_ID}}`\n  Issues:\n  - [<issue-id>]({{FRONTEND_URL}}/issue/<issue-id>)\n\nReplace <issue-id> with the full UUID of each devdash issue.\nIf the PR addresses multiple issues, list each on its own line.",
 
 	"projects": `# Cross-Project Work
 
