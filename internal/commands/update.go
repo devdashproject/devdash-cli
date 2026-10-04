@@ -45,6 +45,9 @@ identify an issue within the current project.`,
 
 			if cmd.Flags().Changed("status") {
 				v, _ := cmd.Flags().GetString("status")
+				if err := validateStatus(v); err != nil {
+					return err
+				}
 				req.Status = &v
 				hasChanges = true
 			}
@@ -133,7 +136,7 @@ identify an issue within the current project.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("status", "", "Status: pending, in_progress, completed (to start work: --status=in_progress)")
+	cmd.Flags().String("status", "", "Status: pending, ready, in_progress, completed, blocked, failed, archived (to start work: --status=in_progress; to finish, prefer 'close')")
 	cmd.Flags().String("title", "", "New title")
 	cmd.Flags().String("subject", "", "Same as --title")
 	cmd.Flags().String("description", "", "New description")

@@ -17,7 +17,7 @@ func newListCmd(d *Deps) *cobra.Command {
 		Long: `List all issues for the current project, sorted by priority.
 
 Results can be narrowed with --status (pending, in_progress, blocked,
-completed, failed, archived, or the shorthand open), --since (accepts relative durations
+completed, ready, failed, archived, or the shorthand open), --since (accepts relative durations
 like 2h, 3d, 1w or an absolute YYYY-MM-DD date filtering on updatedAt),
 --parent (show only children of a specific bead ID), and --mine (show
 only beads assigned to you).
@@ -33,6 +33,12 @@ Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 			pid, err := d.requireProject(cmd)
 			if err != nil {
 				return err
+			}
+
+			if v, _ := cmd.Flags().GetString("status"); v != "" {
+				if err := validateStatus(v, "open"); err != nil {
+					return err
+				}
 			}
 
 			beads, err := api.FetchAll[api.Bead](d.Client, "/beads?projectId="+pid)
@@ -94,7 +100,7 @@ Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 			return nil
 		},
 	}
-	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, completed, blocked, failed, archived, or open (pending+in_progress+blocked)")
+	cmd.Flags().String("status", "", "Filter by status: pending, ready, in_progress, completed, blocked, failed, archived, or open (pending+in_progress+blocked)")
 	cmd.Flags().String("since", "", "Filter by updatedAt (Nh, Nd, Nw, or YYYY-MM-DD)")
 	cmd.Flags().String("parent", "", "Filter by parent bead ID")
 	cmd.Flags().Bool("mine", false, "Show only issues assigned to you")
