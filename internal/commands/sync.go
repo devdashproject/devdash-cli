@@ -92,7 +92,7 @@ for bulk imports. Requires a project with a linked GitHub repository.`,
 				BeadID string `json:"beadId"`
 			}
 			if json.Unmarshal(data, &result) == nil && result.BeadID != "" {
-				fmt.Printf("Imported as bead %s\n", result.BeadID)
+				fmt.Printf("Imported as issue %s\n", result.BeadID)
 			} else {
 				fmt.Println(string(data))
 			}

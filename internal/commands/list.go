@@ -21,7 +21,9 @@ Results can be narrowed with --status (pending, in_progress, completed),
 YYYY-MM-DD date filtering on updatedAt), --parent (show only children
 of a specific bead ID), and --mine (show only beads assigned to you).
 
-When no issues match the filters, a message is printed to stderr.`,
+When no issues match the filters, a message is printed to stderr.
+
+Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
@@ -94,7 +96,7 @@ When no issues match the filters, a message is printed to stderr.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, completed")
+	cmd.Flags().String("status", "", "Filter by status: pending, in_progress, completed, blocked, failed, archived")
 	cmd.Flags().String("since", "", "Filter by updatedAt (Nh, Nd, Nw, or YYYY-MM-DD)")
 	cmd.Flags().String("parent", "", "Filter by parent bead ID")
 	cmd.Flags().Bool("mine", false, "Show only issues assigned to you")

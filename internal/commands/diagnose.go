@@ -14,7 +14,7 @@ import (
 func newDiagnoseCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "diagnose <id>",
-		Short: "Investigate bead: status, job history, failure details",
+		Short: "Investigate an issue: status, job history, failure details",
 		Long: `Investigate a bead by showing its current state and associated job history.
 
 Prints a summary line (ID, subject, status, priority, type), then lists all
@@ -38,13 +38,13 @@ aren't completing as expected.`,
 
 			beadData, err := d.Client.Get("/beads/" + uuid + "?projectId=" + pid)
 			if err != nil {
-				return fmt.Errorf("failed to fetch bead: %w", err)
+				return fmt.Errorf("failed to fetch issue: %w", err)
 			}
 
 			var bead api.Bead
 			_ = json.Unmarshal(beadData, &bead)
 
-			fmt.Println("── Bead ──")
+			fmt.Println("── Issue ──")
 			fmt.Printf("%s  %s  [%s] [P%d] [%s]\n",
 				shortID(bead.ID), bead.Subject, bead.Status, bead.Priority, bead.BeadType)
 

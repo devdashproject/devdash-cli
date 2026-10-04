@@ -17,12 +17,16 @@ func newReadyCmd(d *Deps) *cobra.Command {
 		Long: `Show pending, unblocked issues sorted by automability score then priority.
 
 This is the "what should I work on next?" command. It filters out completed,
-in-progress, and blocked issues, as well as "thought" type beads, leaving
-only actionable work. Results are ranked so the most automatable, highest
-priority issues appear first.
+in-progress, and blocked issues, "thought" issues, and parent issues that
+still have open children (work the children; the parent closes when they
+do), leaving only actionable work. Results are ranked by automability,
+then priority, then sort order (see 'update --sort-order'), then oldest
+first, so a plan's steps come out in the order they were created.
 
 Use --since to narrow results to issues created within a time window
-(e.g. --since=7d, --since=2h, or --since=2025-01-01).`,
+(e.g. --since=7d, --since=2h, or --since=2025-01-01).
+
+Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid, err := d.requireProject(cmd)
 			if err != nil {
@@ -44,9 +48,13 @@ Use --since to narrow results to issues created within a time window
 			}
 
 			completedIDs := make(map[string]bool)
+			hasOpenChildren := make(map[string]bool)
 			for _, b := range beads {
 				if b.Status == "completed" {
 					completedIDs[b.ID] = true
+				}
+				if b.ParentBeadID != "" && b.Status != "completed" && b.Status != "archived" {
+					hasOpenChildren[b.ParentBeadID] = true
 				}
 			}
 
@@ -61,18 +69,14 @@ Use --since to narrow results to issues created within a time window
 				if sinceFilter != "" && b.CreatedAt.Format("2006-01-02T15:04:05.000Z") < sinceFilter {
 					continue
 				}
-				if isBlocked(b, completedIDs) {
+				if isBlocked(b, completedIDs) || hasOpenChildren[b.ID] {
 					continue
 				}
 				ready = append(ready, b)
 			}
 
-			sort.Slice(ready, func(i, j int) bool {
-				si, sj := automabilityScore(ready[i]), automabilityScore(ready[j])
-				if si != sj {
-					return si > sj
-				}
-				return ready[i].Priority < ready[j].Priority
+			sort.SliceStable(ready, func(i, j int) bool {
+				return readyLess(ready[i], ready[j])
 			})
 
 			if len(ready) == 0 {
@@ -98,6 +102,24 @@ func isEffectivelyBlocked(b api.Bead, completedIDs map[string]bool) bool {
 		return true
 	}
 	return b.Status == "pending" && len(b.BlockedBy) > 0 && isBlocked(b, completedIDs)
+}
+
+// readyLess orders ready issues: automability (high first), priority,
+// explicit sort order (unset last), then creation time (oldest first).
+func readyLess(a, b api.Bead) bool {
+	if sa, sb := automabilityScore(a), automabilityScore(b); sa != sb {
+		return sa > sb
+	}
+	if a.Priority != b.Priority {
+		return a.Priority < b.Priority
+	}
+	if (a.SortOrder == nil) != (b.SortOrder == nil) {
+		return a.SortOrder != nil
+	}
+	if a.SortOrder != nil && *a.SortOrder != *b.SortOrder {
+		return *a.SortOrder < *b.SortOrder
+	}
+	return a.CreatedAt.Before(b.CreatedAt.Time)
 }
 
 func isBlocked(b api.Bead, completedIDs map[string]bool) bool {

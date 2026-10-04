@@ -12,11 +12,12 @@ import (
 
 func newCreateCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a new issue",
+		Use:        "create",
+		Short:      "Create a new issue",
+		SuggestFor: []string{"new", "add"},
 		Long: `Create a new issue in the current project.
 
-Requires --subject or --title. Optionally set the type (task, bug, feature,
+Requires --title (or its synonym --subject). Optionally set the type (task, bug, feature,
 enhancement, thought), priority (0=critical through 4=backlog),
 description, parent issue, due date, time estimate, and sort order.
 
@@ -102,8 +103,8 @@ to mark it in_progress when you begin work.`,
 			return nil
 		},
 	}
-	cmd.Flags().String("subject", "", "Issue subject (required)")
-	cmd.Flags().String("title", "", "Issue title (deprecated: use --subject)")
+	cmd.Flags().String("title", "", "Issue title (required; same as --subject)")
+	cmd.Flags().String("subject", "", "Same as --title")
 	cmd.Flags().String("description", "", "Issue description")
 	cmd.Flags().String("type", "task", "Issue type: task, bug, feature, enhancement, thought")
 	cmd.Flags().Int("priority", 2, "Priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog")

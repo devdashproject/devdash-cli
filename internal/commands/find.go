@@ -11,7 +11,7 @@ import (
 func newFindCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "find <uuid>",
-		Short: "Look up a bead by full UUID across all projects",
+		Short: "Look up an issue by full UUID across all projects",
 		Long: `Look up a bead by its full 36-character UUID and print the raw JSON response.
 
 Unlike most commands, find is not scoped to the current project — it searches
