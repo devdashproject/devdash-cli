@@ -90,6 +90,16 @@ Use --since to narrow results to issues created within a time window
 	return cmd
 }
 
+// isEffectivelyBlocked reports whether a bead is waiting on something: the server
+// marks beads "blocked" when a dependency is added, and pending beads can still
+// carry unfinished dependencies.
+func isEffectivelyBlocked(b api.Bead, completedIDs map[string]bool) bool {
+	if b.Status == "blocked" {
+		return true
+	}
+	return b.Status == "pending" && len(b.BlockedBy) > 0 && isBlocked(b, completedIDs)
+}
+
 func isBlocked(b api.Bead, completedIDs map[string]bool) bool {
 	for _, dep := range b.BlockedBy {
 		if !completedIDs[dep] {
