@@ -54,7 +54,7 @@ func TestExchangeLoginCode(t *testing.T) {
 	const verifier = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 	const nonce = "client-nonce"
 	const redirectURI = "http://127.0.0.1:18787/callback"
-	const token = "dd_saved_secret"
+	token := "dd_" + strings.Repeat("a", 64)
 	used := false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/auth/cli/exchange" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "" {
@@ -77,17 +77,17 @@ func TestExchangeLoginCode(t *testing.T) {
 		}
 		used = true
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"token":"` + token + `"}`))
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
 	}))
 	defer server.Close()
 
 	got, err := exchangeLoginCode(server.URL, code, verifier, redirectURI, nonce)
 	if err != nil || got != token {
-		t.Fatalf("exchange token = %q, err = %v", got, err)
+		t.Fatalf("exchange did not return the expected token: %v", err)
 	}
 	got, err = exchangeLoginCode(server.URL, code, verifier, redirectURI, nonce)
 	if got != "" || err == nil || !strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), code) {
-		t.Fatalf("replayed exchange token = %q, err = %v", got, err)
+		t.Fatalf("replayed exchange was not rejected: %v", err)
 	}
 }
 
@@ -128,7 +128,31 @@ func TestExchangeLoginCodeRejectsEmptyToken(t *testing.T) {
 	defer server.Close()
 	got, err := exchangeLoginCode(server.URL, "code", "verifier", "http://127.0.0.1:18787/callback", "nonce")
 	if got != "" || err == nil {
-		t.Fatalf("empty exchange token accepted: %q, %v", got, err)
+		t.Fatalf("empty exchange token accepted: %v", err)
+	}
+}
+
+func TestExchangeLoginCodeRejectsMalformedToken(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		token string
+	}{
+		{"wrong prefix", "api_" + strings.Repeat("a", 64)},
+		{"short token", "dd_" + strings.Repeat("a", 63)},
+		{"uppercase hex", "dd_" + strings.Repeat("A", 64)},
+		{"nonhex", "dd_" + strings.Repeat("g", 64)},
+		{"extra suffix", "dd_" + strings.Repeat("a", 64) + "x"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]string{"token": tc.token})
+			}))
+			defer server.Close()
+			got, err := exchangeLoginCode(server.URL, "code", "verifier", "http://127.0.0.1:18787/callback", "nonce")
+			if got != "" || err == nil || !strings.Contains(err.Error(), "invalid code exchange response") {
+				t.Fatalf("malformed exchange token accepted: %v", err)
+			}
+		})
 	}
 }
 
@@ -139,7 +163,7 @@ func TestExchangeLoginCodeRejectsExpiredCode(t *testing.T) {
 	defer server.Close()
 	got, err := exchangeLoginCode(server.URL, "expired-code", "verifier", "http://127.0.0.1:18787/callback", "nonce")
 	if got != "" || err == nil || !strings.Contains(err.Error(), "HTTP 401") {
-		t.Fatalf("expired code accepted: %q, %v", got, err)
+		t.Fatalf("expired code accepted: %v", err)
 	}
 }
 

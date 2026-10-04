@@ -173,11 +173,13 @@ func exchangeLoginCode(apiURL, code, verifier, redirectURI, nonce string) (strin
 	var response struct {
 		Token string `json:"token"`
 	}
-	if err := json.Unmarshal(data, &response); err != nil || response.Token == "" {
+	if err := json.Unmarshal(data, &response); err != nil || !exchangedTokenPattern.MatchString(response.Token) {
 		return "", fmt.Errorf("invalid code exchange response; nothing was saved")
 	}
 	return response.Token, nil
 }
+
+var exchangedTokenPattern = regexp.MustCompile(`^dd_[0-9a-f]{64}$`)
 
 // loginWithToken verifies a token against the API, then saves it.
 func loginWithToken(cfg *config.Config, token string) error {
