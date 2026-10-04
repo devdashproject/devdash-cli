@@ -163,3 +163,30 @@ func TestRequireProjectID(t *testing.T) {
 		t.Errorf("projectID = %q, want %q", pid, "proj-123")
 	}
 }
+
+func TestLoadTokenFromEnvVar(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DD_CONFIG_DIR", dir)
+	t.Setenv("DD_TOKEN_FILE", filepath.Join(dir, "token"))
+	if err := os.WriteFile(filepath.Join(dir, "token"), []byte("dd_fromfile"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(TokenEnvVar, "dd_fromenv")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Token != "dd_fromenv" || cfg.TokenSource != "DEVDASH_TOKEN env var" {
+		t.Errorf("env var should win: token=%q source=%q", cfg.Token, cfg.TokenSource)
+	}
+
+	t.Setenv(TokenEnvVar, "")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Token != "dd_fromfile" || cfg.TokenSource != filepath.Join(dir, "token") {
+		t.Errorf("file fallback: token=%q source=%q", cfg.Token, cfg.TokenSource)
+	}
+}
