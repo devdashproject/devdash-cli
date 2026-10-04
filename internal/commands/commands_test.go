@@ -139,7 +139,7 @@ func apiMux(beads []apiPkg.Bead) *http.ServeMux {
 	mux.HandleFunc("/api/auth/tokens", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			json.NewEncoder(w).Encode([]map[string]string{{"id": "tok-1", "name": "test"}})
+			w.Write([]byte(`[{"id":"tok-1","name":"test","revokedAt":null},{"id":"tok-2","name":"old","revokedAt":"2026-09-15T10:00:00.000Z"}]`))
 		case "POST":
 			var req map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&req)
@@ -1065,5 +1065,23 @@ func TestNotLoggedInHint(t *testing.T) {
 func TestMaskSecrets(t *testing.T) {
 	if got := maskSecrets("unknown command \"dd_abcdef0123456789\""); strings.Contains(got, "dd_abcdef0123456789") {
 		t.Errorf("token not masked: %s", got)
+	}
+}
+
+func TestTokenListActiveHidesRevoked(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("token", "list")
+	if err != nil {
+		t.Fatalf("token list failed: %v", err)
+	}
+	if !strings.Contains(out, "tok-2") {
+		t.Errorf("token list should include revoked tokens: %s", out)
+	}
+	out, err = run("token", "list", "--active")
+	if err != nil {
+		t.Fatalf("token list --active failed: %v", err)
+	}
+	if strings.Contains(out, "tok-2") || !strings.Contains(out, "tok-1") {
+		t.Errorf("--active should hide revoked tokens: %s", out)
 	}
 }
