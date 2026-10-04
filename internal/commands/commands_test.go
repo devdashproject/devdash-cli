@@ -1027,11 +1027,43 @@ func TestHelpTopicCLIDescriptions(t *testing.T) {
 
 func TestHelpTopicUnknown(t *testing.T) {
 	run := newTestEnv(t, apiPkg.SampleBeads())
-	out, err := run("help", "nonexistent")
-	if err != nil {
-		t.Fatalf("help nonexistent failed: %v", err)
+	_, err := run("help", "nonexistent")
+	if err == nil {
+		t.Fatal("help nonexistent should fail so agents can detect it")
 	}
-	if !strings.Contains(out, "Unknown help topic") {
-		t.Errorf("should show unknown topic message, got: %s", out)
+	if !strings.Contains(err.Error(), "unknown help topic") || !strings.Contains(err.Error(), "auth") {
+		t.Errorf("should name the unknown topic and list topics, got: %v", err)
+	}
+}
+
+func TestHelpTopicAuth(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("help", "auth")
+	if err != nil {
+		t.Fatalf("help auth failed: %v", err)
+	}
+	for _, want := range []string{"login --token", "--with-token", "DEVDASH_TOKEN", "token create"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("help auth missing %q", want)
+		}
+	}
+}
+
+func TestNotLoggedInHint(t *testing.T) {
+	cfg := &config.Config{}
+	_, err := cfg.RequireToken()
+	if err == nil {
+		t.Fatal("expected error without token")
+	}
+	for _, want := range []string{"devdash login --token", "DEVDASH_TOKEN", "help auth"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("not-logged-in hint missing %q: %v", want, err)
+		}
+	}
+}
+
+func TestMaskSecrets(t *testing.T) {
+	if got := maskSecrets("unknown command \"dd_abcdef0123456789\""); strings.Contains(got, "dd_abcdef0123456789") {
+		t.Errorf("token not masked: %s", got)
 	}
 }

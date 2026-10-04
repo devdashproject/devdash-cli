@@ -10,7 +10,7 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:   "help [topic]",
 		Short: "Help about devdash or a specific topic",
-		Long:  "Available topics: cli, workflow, close, pr, projects, report",
+		Long:  "Available topics: auth, cli, workflow, close, pr, projects, report\nOr: devdash help <command>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return rootCmd.Help()
@@ -26,13 +26,42 @@ func registerHelpTopics(rootCmd *cobra.Command) {
 				return target.Help()
 			}
 
-			fmt.Printf("Unknown help topic: %s\n\nAvailable topics: cli, workflow, close, pr, projects, report\n", args[0])
-			return nil
+			return fmt.Errorf("unknown help topic or command: %s\n\nAvailable topics: auth, cli, workflow, close, pr, projects, report\nOr: devdash help <command>", maskSecrets(args[0]))
 		},
 	})
 }
 
 var helpTopics = map[string]string{
+	"auth": `# Authentication
+
+devdash needs an API token. Pick whichever fits your environment:
+
+## 1. Browser (interactive, default)
+  devdash login                 Opens sign-in in your browser, saves the token
+  devdash login --no-browser    Prints the URL instead of opening it
+                                (the browser must be on this same machine:
+                                it calls back to localhost)
+
+## 2. Existing API token (headless machines, CI, coding agents)
+  devdash login --token=dd_...                  Verify and save the token
+  echo "$TOKEN" | devdash login --with-token    Same, read from stdin
+                                                (keeps it out of shell history)
+
+## 3. Environment variable (nothing written to disk, no login needed)
+  export DEVDASH_TOKEN=dd_...
+
+## Getting a token
+  Run 'devdash token create "my laptop"' on a machine that is already
+  logged in, or create one in the web app under Settings.
+
+## Where tokens live
+  DEVDASH_TOKEN wins if set; otherwise the token file at
+  ~/.config/dev-dash/token (override with DD_TOKEN_FILE or DD_CONFIG_DIR).
+
+## Check, manage, log out
+  devdash doctor                         Shows token source and verifies it
+  devdash token list | token revoke <id> Manage tokens
+  rm ~/.config/dev-dash/token            Log out (and revoke the token)`,
 	"cli": `# DevDash CLI Reference
 
 ## Issue Tracking (Core)

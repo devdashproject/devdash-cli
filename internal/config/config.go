@@ -113,7 +113,11 @@ func (c *Config) SaveToken(token string) error {
 // RequireToken returns the token or an error if not authenticated.
 func (c *Config) RequireToken() (string, error) {
 	if c.Token == "" {
-		return "", fmt.Errorf("not authenticated — run 'devdash login' first")
+		return "", fmt.Errorf(`not logged in. Authenticate with one of:
+  devdash login                  Browser sign-in
+  devdash login --token=dd_...   Save an existing API token (headless/CI)
+  export DEVDASH_TOKEN=dd_...    Use a token without saving it
+More: devdash help auth`)
 	}
 	return c.Token, nil
 }

@@ -139,7 +139,7 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 func Execute() {
 	rootCmd := NewRootCmd(nil)
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", maskSecrets(err.Error()))
 		os.Exit(1)
 	}
 }
