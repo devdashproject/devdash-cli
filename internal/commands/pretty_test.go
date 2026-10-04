@@ -63,3 +63,25 @@ func TestCommentConfirmsAndUpdateEchoesChanges(t *testing.T) {
 }
 
 func apiPkgSampleBeadsForPretty() []apiPkg.Bead { return apiPkg.SampleBeads() }
+
+func TestStripMarkdownInPrettyViews(t *testing.T) {
+	if got := stripMarkdown("**Agent Report**: pushed `fix/x` and __done__\n## Notes\nok"); got != "Agent Report: pushed fix/x and done\nNotes\nok" {
+		t.Errorf("stripMarkdown = %q", got)
+	}
+	out, _ := prettyComments([]byte(`[{"authorType":"agent","content":"**Agent Report**: Changes pushed","createdAt":"2026-10-04T07:08:00Z"}]`))
+	if strings.Contains(out, "**") || !strings.Contains(out, "Agent Report: Changes pushed") {
+		t.Errorf("pretty comments should strip markdown:\n%s", out)
+	}
+}
+
+func TestPrettyIsDiscoverable(t *testing.T) {
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, _ := run("help", "workflow")
+	if !strings.Contains(out, "show <id> --pretty") {
+		t.Errorf("help workflow should mention --pretty:\n%s", out)
+	}
+	out, _ = run("--help")
+	if !strings.Contains(out, "--pretty for a readable view") {
+		t.Errorf("command list should mention --pretty for show:\n%s", out)
+	}
+}

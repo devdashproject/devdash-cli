@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
+
+	"github.com/devdashproject/devdash-cli/internal/api"
+	"github.com/devdashproject/devdash-cli/internal/output"
 )
 
 // printJSON pretty-prints any JSON response, falling back to the raw bytes.
@@ -73,6 +78,20 @@ func idList(v interface{}) string {
 	return strings.Join(ids, ", ")
 }
 
+var (
+	mdBold    = regexp.MustCompile(`\*\*(.+?)\*\*|__(.+?)__`)
+	mdCode    = regexp.MustCompile("`([^`\n]+)`")
+	mdHeading = regexp.MustCompile(`(?m)^#{1,6}\s+`)
+)
+
+// stripMarkdown removes the markup that reads badly in a terminal: bold,
+// inline code and heading markers. Text and line breaks are kept.
+func stripMarkdown(s string) string {
+	s = mdBold.ReplaceAllString(s, "$1$2")
+	s = mdCode.ReplaceAllString(s, "$1")
+	return mdHeading.ReplaceAllString(s, "")
+}
+
 // prettyBead renders an issue for humans, skipping empty fields.
 func prettyBead(data []byte) (string, error) {
 	var b map[string]interface{}
@@ -105,6 +124,7 @@ func prettyBead(data []byte) (string, error) {
 	field("Updated", shortTime(str(b, "updatedAt")))
 
 	block := func(title, text string) {
+		text = stripMarkdown(text)
 		if strings.TrimSpace(text) != "" {
 			fmt.Fprintf(&sb, "\n%s:\n  %s\n", title, strings.ReplaceAll(strings.TrimSpace(text), "\n", "\n  "))
 		}
@@ -140,7 +160,7 @@ func prettyComments(data []byte) (string, error) {
 		if author == "" {
 			author = str(c, "authorType")
 		}
-		fmt.Fprintf(&sb, "[%s] %s: %s\n", shortTime(str(c, "createdAt")), author, str(c, "content"))
+		fmt.Fprintf(&sb, "[%s] %s: %s\n", shortTime(str(c, "createdAt")), author, stripMarkdown(str(c, "content")))
 	}
 	return sb.String(), nil
 }
@@ -190,4 +210,24 @@ func firstNonEmptyStr(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// prettyChildren lists a parent's children for show --pretty, in list order.
+func prettyChildren(beads []api.Bead, parentID string) string {
+	var kids []api.Bead
+	for _, b := range beads {
+		if b.ParentBeadID == parentID {
+			kids = append(kids, b)
+		}
+	}
+	if len(kids) == 0 {
+		return ""
+	}
+	sort.SliceStable(kids, func(i, j int) bool { return listLess(kids[i], kids[j]) })
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "\nChildren (%d):\n", len(kids))
+	for _, k := range kids {
+		sb.WriteString("  " + output.FormatListLine(k) + "\n")
+	}
+	return sb.String()
 }

@@ -141,3 +141,44 @@ func TestReadChoiceFrom(t *testing.T) {
 		t.Error("EOF should be an error, not option 1")
 	}
 }
+
+func linkedCloseGate(t *testing.T, dir string) string {
+	t.Helper()
+	data, _ := os.ReadFile(filepath.Join(dir, config.ProjectFileName))
+	var pf config.ProjectFile
+	json.Unmarshal(data, &pf)
+	return pf.CloseGate
+}
+
+func TestLinkCloseGate(t *testing.T) {
+	dir := newLinkRepo(t) // no remote
+	withClosedStdin(t)
+	run := newTestEnv(t, apiPkg.SampleBeads())
+	out, err := run("link", "test-project-id")
+	if err != nil {
+		t.Fatalf("link failed: %v", err)
+	}
+	if got := linkedCloseGate(t, dir); got != "commit" || !strings.Contains(out, "no git remote") {
+		t.Errorf("no remote should give close_gate commit with a note, got %q:\n%s", got, out)
+	}
+
+	dir = newLinkRepo(t)
+	exec.Command("git", "remote", "add", "origin", "https://github.com/user/test.git").Run()
+	if _, err := run("link", "test-project-id"); err != nil {
+		t.Fatalf("link failed: %v", err)
+	}
+	if got := linkedCloseGate(t, dir); got != "push" {
+		t.Errorf("repo with remote should default to push, got %q", got)
+	}
+
+	dir = newLinkRepo(t)
+	if _, err := run("link", "test-project-id", "--close-on=push"); err != nil {
+		t.Fatalf("link --close-on failed: %v", err)
+	}
+	if got := linkedCloseGate(t, dir); got != "push" {
+		t.Errorf("--close-on should override, got %q", got)
+	}
+	if _, err := run("link", "test-project-id", "--close-on=merge"); err == nil {
+		t.Error("invalid --close-on should fail")
+	}
+}
