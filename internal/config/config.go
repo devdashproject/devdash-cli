@@ -32,8 +32,12 @@ type Config struct {
 	FrontendURL string
 	CloseGate   string
 	Token       string
+	TokenSource string // "DEVDASH_TOKEN env var" or the token file path; empty if no token
 	ConfigDir   string
 }
+
+// TokenEnvVar supplies an API token without a token file; it wins over the file.
+const TokenEnvVar = "DEVDASH_TOKEN"
 
 // Load resolves configuration from env vars, .devdash file, and defaults.
 func Load() (*Config, error) {
@@ -77,10 +81,13 @@ func Load() (*Config, error) {
 		cfg.APIURL = v
 	}
 
-	// Load token
-	token, err := loadToken(cfg.ConfigDir)
-	if err == nil {
+	// Load token: DEVDASH_TOKEN env var wins over the token file
+	if v := strings.TrimSpace(os.Getenv(TokenEnvVar)); v != "" {
+		cfg.Token = v
+		cfg.TokenSource = TokenEnvVar + " env var"
+	} else if token, err := loadToken(cfg.ConfigDir); err == nil && token != "" {
 		cfg.Token = token
+		cfg.TokenSource = cfg.TokenFilePath()
 	}
 
 	return cfg, nil
@@ -106,7 +113,11 @@ func (c *Config) SaveToken(token string) error {
 // RequireToken returns the token or an error if not authenticated.
 func (c *Config) RequireToken() (string, error) {
 	if c.Token == "" {
-		return "", fmt.Errorf("not authenticated — run 'devdash login' first")
+		return "", fmt.Errorf(`not logged in. Authenticate with one of:
+  devdash login                  Browser sign-in
+  devdash login --token=dd_...   Save an existing API token (headless/CI)
+  export DEVDASH_TOKEN=dd_...    Use a token without saving it
+More: devdash help auth`)
 	}
 	return c.Token, nil
 }

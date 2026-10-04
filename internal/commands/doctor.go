@@ -36,9 +36,14 @@ configuration and environment issues in one shot.`,
 			}
 
 			if c != nil && c.Token != "" {
-				fmt.Printf("✓ Token: present (%s)\n", c.TokenFilePath())
+				fmt.Printf("✓ Token: present (%s)\n", c.TokenSource)
 			} else {
-				fmt.Printf("✗ Token: not found — run 'devdash login'\n")
+				tokenPath := "the token file"
+				if c != nil {
+					tokenPath = c.TokenFilePath()
+				}
+				fmt.Printf("✗ Token: not found (checked %s env var and %s)\n", config.TokenEnvVar, tokenPath)
+				fmt.Printf("    fix: devdash login  |  devdash login --token=dd_...  |  see 'devdash help auth'\n")
 				issues++
 			}
 
