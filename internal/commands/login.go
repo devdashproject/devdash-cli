@@ -56,7 +56,7 @@ the web app under Settings. See 'devdash help auth'.`,
 			token, _ := cmd.Flags().GetString("token")
 			withToken, _ := cmd.Flags().GetBool("with-token")
 			if cmd.Flags().Changed("token") && strings.TrimSpace(token) == "" {
-				return fmt.Errorf("--token needs a value: devdash login --token=dd_...")
+				return fmt.Errorf("--token needs a value, e.g. devdash login --token=<your dd_ token>")
 			}
 			if withToken {
 				if token != "" {
