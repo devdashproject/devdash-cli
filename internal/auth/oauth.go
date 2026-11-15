@@ -7,15 +7,35 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
 
-const (
-	callbackHTML = `<!DOCTYPE html><html><body><h2>Sign-in received</h2><p>Return to the CLI to finish authentication. You can close this window.</p><script>window.close()</script></body></html>`
-)
+var callbackPage = template.Must(template.New("login-success").Parse(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign-in received · DevDash</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7fb;color:#172033;font:17px/1.6 system-ui,sans-serif}
+main{box-sizing:border-box;max-width:520px;margin:24px;padding:40px;background:white;border:1px solid #e2e8f0;border-radius:20px}
+.brand{font-weight:700;color:#2563eb}h1{font-size:30px;line-height:1.2;margin:20px 0 16px}p{color:#526077}
+a{display:inline-block;margin-top:12px;padding:10px 18px;background:#2563eb;color:white;border-radius:8px;text-decoration:none;font-weight:600}
+</style></head><body><main><div class="brand">DevDash</div><h1>Sign-in received.</h1>
+<p>You can close this browser window and return to your terminal to confirm authentication finished.</p>
+{{if .FrontendURL}}<a href="{{.FrontendURL}}" rel="noreferrer">Open DevDash</a>{{end}}
+</main></body></html>`))
+
+func successPageURL(frontendURL string) string {
+	target, err := url.Parse(frontendURL)
+	if err != nil || target.Hostname() == "" || target.User != nil ||
+		(target.Scheme != "https" && target.Scheme != "http") {
+		return ""
+	}
+	return target.String()
+}
 
 // OAuthResult holds the result of an OAuth flow.
 type OAuthResult struct {
@@ -25,7 +45,7 @@ type OAuthResult struct {
 
 // StartCallbackServer starts a local HTTP server to receive the OAuth callback.
 // Returns the port, a channel that will receive one code, and a cleanup function.
-func StartCallbackServer(nonce string) (int, <-chan OAuthResult, func(), error) {
+func StartCallbackServer(nonce string, frontendURLs ...string) (int, <-chan OAuthResult, func(), error) {
 	// Try ports 18787-18792
 	var listener net.Listener
 	var port int
@@ -41,6 +61,10 @@ func StartCallbackServer(nonce string) (int, <-chan OAuthResult, func(), error) 
 		return 0, nil, nil, fmt.Errorf("could not find available port (tried 18787-18792)")
 	}
 
+	frontendURL := ""
+	if len(frontendURLs) > 0 {
+		frontendURL = successPageURL(frontendURLs[0])
+	}
 	resultCh := make(chan OAuthResult, 1)
 	var once sync.Once
 
@@ -65,8 +89,10 @@ func StartCallbackServer(nonce string) (int, <-chan OAuthResult, func(), error) 
 			http.Error(w, "Callback already received", http.StatusConflict)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = fmt.Fprint(w, callbackHTML)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		_ = callbackPage.Execute(w, struct{ FrontendURL string }{frontendURL})
 	})
 
 	server := &http.Server{Handler: mux}
