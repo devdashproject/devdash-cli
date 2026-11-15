@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -44,7 +45,7 @@ func TestGeneratePKCE(t *testing.T) {
 }
 
 func TestCallbackServerAcceptsCodeOnce(t *testing.T) {
-	port, resultCh, cleanup, err := StartCallbackServer("correct-nonce")
+	port, resultCh, cleanup, err := StartCallbackServer("correct-nonce", "https://devdash.blue")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,6 +83,9 @@ func TestCallbackServerAcceptsCodeOnce(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || string(page) == "" {
 		t.Fatalf("valid callback status %d", resp.StatusCode)
 	}
+	if !strings.Contains(string(page), "You can close this browser window") || !strings.Contains(string(page), `href="https://devdash.blue"`) || strings.Contains(string(page), "window.close") {
+		t.Fatal("callback page must explain the handoff and offer a dashboard link")
+	}
 	if result := <-resultCh; result.Code != "one-time-code" || result.Error != nil {
 		t.Fatalf("result = %+v", result)
 	}
@@ -97,5 +101,18 @@ func TestCallbackServerAcceptsCodeOnce(t *testing.T) {
 	case result := <-resultCh:
 		t.Fatalf("replay delivered second code: %+v", result)
 	case <-time.After(20 * time.Millisecond):
+	}
+}
+
+func TestSuccessPageDestination(t *testing.T) {
+	for _, target := range []string{"https://devdash.blue", "https://dev-dash-blue.vercel.app", "http://localhost:5173"} {
+		if got := successPageURL(target); got != target {
+			t.Errorf("destination %q became %q", target, got)
+		}
+	}
+	for _, target := range []string{"", "javascript:alert(1)", "//evil.example", "https://user:password@example.com"} {
+		if got := successPageURL(target); got != "" {
+			t.Errorf("accepted unsafe destination %q", target)
+		}
 	}
 }

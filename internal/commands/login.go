@@ -86,7 +86,7 @@ the web app under Settings. See 'devdash help auth'.`,
 				return err
 			}
 
-			port, resultCh, cleanup, err := auth.StartCallbackServer(nonce)
+			port, resultCh, cleanup, err := auth.StartCallbackServer(nonce, d.Cfg.FrontendURL)
 			if err != nil {
 				return err
 			}
