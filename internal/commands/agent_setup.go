@@ -201,6 +201,7 @@ devdash update abc123 --status=in_progress             Mark started
 devdash close abc123 --summary="Fixed X by doing Y" --commit=$(git rev-parse HEAD)  Close
 devdash comment abc123 --body="Blocked on API response format"  Add a comment
 devdash project list                                   List all projects
+devdash session save --summary="Done X; next Y"          Save a handoff note to project memory (end of session)
 `+"```"+`
 
 Run `+"`devdash help cli`"+` for the full reference — deps, activity, report, dispatch, and more.

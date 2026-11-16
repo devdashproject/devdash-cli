@@ -101,6 +101,7 @@ func NewRootCmd(deps *Deps) *cobra.Command {
 	rootCmd.AddCommand(newDepCmd(deps))
 	rootCmd.AddCommand(newCommentCmd(deps))
 	rootCmd.AddCommand(newCommentsCmd(deps))
+	rootCmd.AddCommand(newSessionCmd(deps))
 	rootCmd.AddCommand(newActivityCmd(deps))
 	rootCmd.AddCommand(newFindCmd(deps))
 	rootCmd.AddCommand(newDeleteCmd(deps))
