@@ -92,6 +92,8 @@ devdash blocked                           # See what's waiting
 | `dep remove <id> <dep-id>` | Remove dependency |
 | `comment <id> --body="..."` | Add a comment to a task |
 | `comments <id>` | List comments on a task |
+| `session save --summary="..."` | Save a session summary/handoff to project memory |
+| `session list [--limit=N]` | List recent session summaries |
 | `activity [--since=X]` | View activity log |
 | `report <id> --status=X` | Log agent progress (`code_complete\|committed\|pushed\|error`) |
 | `find <uuid>` | Cross-project task lookup |
