@@ -70,13 +70,57 @@ type APIError struct {
 	Plan        string
 	TrialEndsAt string
 	UpgradeURL  string
+
+	// Not-found detail from newer servers (all optional; absent on older ones).
+	Hint              string
+	SearchedProjectID string
+	Ambiguous         bool
+	Candidates        []Candidate
+	ActualProjectID   string
+	ActualProjectName string
+}
+
+// Candidate is a possible match listed in a not-found body for an ID prefix.
+type Candidate struct {
+	ID8       string `json:"id8"`
+	Subject   string `json:"subject"`
+	ProjectID string `json:"projectId"`
 }
 
 func (e *APIError) Error() string {
+	var msg string
 	if e.Message != "" {
-		return fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Message)
+		msg = fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Message)
+	} else {
+		msg = fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Body)
 	}
-	return fmt.Sprintf("API error (%d): %s", e.StatusCode, e.Body)
+	return msg + e.notFoundDetail()
+}
+
+// notFoundDetail renders the server's not-found hint, the project it
+// searched, the project the bead actually lives in, and candidate matches.
+func (e *APIError) notFoundDetail() string {
+	var b strings.Builder
+	if e.SearchedProjectID != "" {
+		fmt.Fprintf(&b, "\n  searched project: %s", e.SearchedProjectID)
+	}
+	if e.ActualProjectID != "" {
+		name := ""
+		if e.ActualProjectName != "" {
+			name = " (" + e.ActualProjectName + ")"
+		}
+		fmt.Fprintf(&b, "\n  found in project: %s%s", e.ActualProjectID, name)
+	}
+	if e.Hint != "" {
+		b.WriteString("\n  hint: " + e.Hint)
+	}
+	if len(e.Candidates) > 0 {
+		b.WriteString("\n  candidates:")
+		for _, c := range e.Candidates {
+			fmt.Fprintf(&b, "\n    %s  %s  (project %s)", c.ID8, c.Subject, c.ProjectID)
+		}
+	}
+	return b.String()
 }
 
 // IsEntitlementError reports whether this error is a trial/limit block
@@ -207,6 +251,13 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 			Plan           string `json:"plan"`
 			TrialEndsAt    string `json:"trialEndsAt"`
 			UpgradeURL     string `json:"upgradeUrl"`
+
+			Hint              string      `json:"hint"`
+			SearchedProjectID string      `json:"searchedProjectId"`
+			Ambiguous         bool        `json:"ambiguous"`
+			Candidates        []Candidate `json:"candidates"`
+			ActualProjectID   string      `json:"actualProjectId"`
+			ActualProjectName string      `json:"actualProjectName"`
 		}
 		if json.Unmarshal(respBody, &errResp) == nil {
 			apiErr.Code = errResp.Code
@@ -215,6 +266,12 @@ func (c *Client) Do(method, path string, body interface{}) ([]byte, error) {
 			apiErr.Plan = errResp.Plan
 			apiErr.TrialEndsAt = errResp.TrialEndsAt
 			apiErr.UpgradeURL = errResp.UpgradeURL
+			apiErr.Hint = errResp.Hint
+			apiErr.SearchedProjectID = errResp.SearchedProjectID
+			apiErr.Ambiguous = errResp.Ambiguous
+			apiErr.Candidates = errResp.Candidates
+			apiErr.ActualProjectID = errResp.ActualProjectID
+			apiErr.ActualProjectName = errResp.ActualProjectName
 
 			switch {
 			case errResp.UpgradeMessage != "":

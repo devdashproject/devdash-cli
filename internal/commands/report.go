@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
-	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
 
@@ -22,22 +21,17 @@ Use this command to keep the issue's activity trail up to date so that
 future readers can follow what happened and when.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pid, err := d.requireProject(cmd)
-			if err != nil {
-				return err
-			}
-
 			status, _ := cmd.Flags().GetString("status")
 			if status == "" {
 				return fmt.Errorf("--status is required (code_complete, committed, pushed, error)")
 			}
 
-			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
+			uuid, pid, err := d.resolveBead(cmd, args[0])
 			if err != nil {
 				return err
 			}
 
-			req := api.ReportRequest{ProjectID: pid, Status: status}
+			req := api.ReportRequest{Status: status}
 
 			if v, _ := cmd.Flags().GetString("summary"); v != "" {
 				req.Summary = v
@@ -56,7 +50,11 @@ future readers can follow what happened and when.`,
 				req.Error = v
 			}
 
-			_, err = d.Client.Post("/beads/"+uuid+"/report", req)
+			err = d.withBeadProject(uuid, pid, func(pid string) error {
+				req.ProjectID = pid
+				_, err := d.Client.Post("/beads/"+uuid+"/report", req)
+				return err
+			})
 			if err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: report failed: %v\n", err)
 				return nil

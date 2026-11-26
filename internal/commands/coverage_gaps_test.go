@@ -40,8 +40,8 @@ func TestListParentUnknownIDFails(t *testing.T) {
 func TestShowPrettyWithoutChildren(t *testing.T) {
 	run := newTestEnv(t, hierarchyBeads())
 	out, err := run("show", "s000", "--pretty")
-	if err != nil || strings.Contains(out, "Children") {
-		t.Errorf("issue without children should have no Children section, got %q (%v)", out, err)
+	if err != nil || strings.Contains(out, "Children (") || !strings.Contains(out, "Children:    none") {
+		t.Errorf("issue without children should say 'Children:    none' and list none, got %q (%v)", out, err)
 	}
 }
 

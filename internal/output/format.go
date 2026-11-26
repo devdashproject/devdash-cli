@@ -57,6 +57,28 @@ func JobStatusIcon(status string) string {
 
 // FormatReadyLine formats a bead for the `ready` command output.
 func FormatReadyLine(b api.Bead) string {
+	return FormatReadyLineWithLabels(b, nil)
+}
+
+// FormatReadyLineWithLabels is FormatReadyLine plus a trailing note for each
+// blocker in another project that is already done (labels maps blocker ID to
+// its project label), so a cross-project dependency is visible even once it
+// no longer blocks.
+func FormatReadyLineWithLabels(b api.Bead, labels map[string]string) string {
+	line := formatReadyBase(b)
+	var notes []string
+	for _, id := range b.BlockedBy {
+		if l := labels[id]; l != "" {
+			notes = append(notes, shortID(id)+" "+l)
+		}
+	}
+	if len(notes) > 0 {
+		line += "  [done in other project: " + strings.Join(notes, ", ") + "]"
+	}
+	return line
+}
+
+func formatReadyBase(b api.Bead) string {
 	parts := []string{
 		fmt.Sprintf("%s %s", IconPending, beadID(b)),
 		fmt.Sprintf("[P%d]", b.Priority),
@@ -82,7 +104,22 @@ func FormatListLine(b api.Bead) string {
 
 // FormatBlockedLine formats a bead for the `blocked` command output.
 func FormatBlockedLine(b api.Bead) string {
-	blockers := strings.Join(shortIDs(b.BlockedBy), ", ")
+	return FormatBlockedLineWithLabels(b, nil)
+}
+
+// FormatBlockedLineWithLabels is FormatBlockedLine with an optional label per
+// blocker ID (e.g. "(Server Repo)" for a blocker in another project, or
+// "(no access)"), appended after that blocker's short ID.
+func FormatBlockedLineWithLabels(b api.Bead, labels map[string]string) string {
+	parts := make([]string, 0, len(b.BlockedBy))
+	for _, id := range b.BlockedBy {
+		p := shortID(id)
+		if l := labels[id]; l != "" {
+			p += " " + l
+		}
+		parts = append(parts, p)
+	}
+	blockers := strings.Join(parts, ", ")
 	if blockers == "" {
 		blockers = "(none listed)"
 	}
@@ -185,12 +222,4 @@ func shortID(id string) string {
 		return id[:8]
 	}
 	return id
-}
-
-func shortIDs(ids []string) []string {
-	out := make([]string, len(ids))
-	for i, id := range ids {
-		out[i] = shortID(id)
-	}
-	return out
 }

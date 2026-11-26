@@ -5,7 +5,7 @@ Full flag and argument detail for every non-hidden `devdash` command. Read this 
 **Source of truth:** flag definitions live in `internal/commands/*.go`. When you must verify a flag, read the relevant `.go` file rather than trusting paraphrase.
 
 **Conventions used below:**
-- `<id>` → an issue/bead UUID. The CLI accepts the first 8 characters as a unique prefix.
+- `<id>` → an issue/bead UUID. The CLI accepts the first 8 characters as a unique prefix, resolved in the current project. A **full UUID** needs no project at all: `show`, `comment`, `comments`, `update`, `close`, `delete`, `report` and `dep add|remove` work from any directory with no `.devdash` or `DD_PROJECT_ID` (the server uses the issue's own project).
 - `<flag>` → a required value.
 - `[<flag>]` → optional.
 - All commands honor the persistent `--project <uuid-or-prefix>` flag to override the project.
@@ -148,7 +148,7 @@ devdash list --parent=9b5dae5b --status=pending
 
 ### `devdash find <uuid>`
 
-Cross-project lookup by full UUID. Use when you have an issue ID but don't know which project it lives in.
+Cross-project lookup by full UUID. Use when you have an issue ID but don't know which project it lives in. (`devdash show <full-uuid> --pretty` also works with no project and shows the project name, description, parent, children and blockers; when an ID is not found, the server's hint and candidates are printed.)
 
 ### `devdash blocked`
 
@@ -188,7 +188,7 @@ Project health: open / in-progress / blocked / completed counts.
 
 ### `devdash dep add <issue> <depends-on>`
 
-Declare `<issue>` is blocked until `<depends-on>` is completed. Both args resolve as UUID or short prefix.
+Declare `<issue>` is blocked until `<depends-on>` is completed. Both args resolve as UUID or short prefix. A full-UUID `<depends-on>` may live in another project you can access (cross-project dependency; cycles across projects are rejected); the output names that project.
 
 ```bash
 devdash dep add 25c08147 9cb5aa55   # references blocked until SKILL.md is done

@@ -157,8 +157,8 @@ devdash needs an API token. Pick whichever fits your environment:
   import <issue-number> | --all       Import GitHub issues (--state=open|all)
 
 ## ID Formats
-  Full UUID:    27bf66bd-945f-4714-93fd-0c3322b720f4
-  Short prefix: 27bf (any unique prefix)
+  Full UUID:    27bf66bd-945f-4714-93fd-0c3322b720f4  (works with no project configured)
+  Short prefix: 27bf (any unique prefix; resolved in the current project)
   Local ID:     dev-dash-42 (project-scoped)
 
 ## --since Format
@@ -286,6 +286,18 @@ read them to understand what happened.
 ## Targeting a Different Project
   DD_PROJECT_ID=<full-uuid> devdash <command>
 
+## Using a Full UUID Without a Project
+  show, comment, comments, update, close, delete, report and dep add/remove
+  accept a full UUID from any directory, with no .devdash, DD_PROJECT_ID or
+  --project. No projectId is sent; the server checks your permission against
+  the issue's own project.
+    devdash show <full-uuid>
+    devdash comment <full-uuid> "note"
+    devdash close <full-uuid> --summary="..."
+  Short prefixes and local IDs are only unique within one project, so they
+  still use the current project. (Older servers that still require a project:
+  the CLI looks the issue's project up first and retries.)
+
 ## Finding Beads Across Projects
   devdash find <full-uuid>
 
@@ -299,7 +311,24 @@ read them to understand what happened.
   Use full UUIDs for cross-project bead references:
     devdash dep add <issue-uuid> <blocker-uuid-from-other-project>
 
-  The server verifies you have access to both projects.`,
+  The server verifies you have access to both projects, and rejects
+  dependency cycles that span projects. After "dep add" the CLI names the
+  blocker's project when it differs from the issue's.
+
+## Seeing Foreign Blockers
+  devdash show <id> --pretty   Project, description, parent, children, and
+                               blockers; a blocker in another project is shown
+                               "(project: <name>)", one you cannot access as
+                               "(no access)", and an empty relation as "none".
+  devdash blocked              Foreign blockers are labelled with their project.
+  devdash ready                A blocker finished in another project no longer
+                               blocks, and is noted with its project.
+
+## When an ID is Not Found
+  The server's hint is printed with the error: what it searched, whether the
+  bead exists in another project you can access (with that project's name),
+  and candidate matches for an ambiguous or too-short prefix. Retry with the
+  full UUID.`,
 
 	"report": `# Progress Reporting (Optional)
 

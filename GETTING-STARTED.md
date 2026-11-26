@@ -126,7 +126,7 @@ This shows all unblocked tasks sorted by priority, with the most actionable task
 dd show <id>
 ```
 
-You can use the full UUID, a short prefix (like `27bf`), or a local ID. The CLI figures it out.
+You can use the full UUID, a short prefix (like `27bf`), or a local ID. The CLI figures it out. A full UUID works from any directory, even with no project configured; prefixes and local IDs use the current project.
 
 ---
 
@@ -271,7 +271,7 @@ The CLI reads `.devdash` to know which project you're working in. An `api_url` i
 
 **"Not logged in"** — Run `dd login`.
 
-**"No project configured"** — Run `dd link` inside your repo. If you don't have a git repo, either pass `--project=<id>` to each command, or set `DD_PROJECT_ID=<your-project-id>` in your shell. Find your project ID in the web dashboard or with `devdash project list`.
+**"No project configured"** (only for short IDs and project-wide commands; a full issue UUID never needs one) — Run `dd link` inside your repo. If you don't have a git repo, either pass `--project=<id>` to each command, or set `DD_PROJECT_ID=<your-project-id>` in your shell. Find your project ID in the web dashboard or with `devdash project list`.
 
 **Login port in use** — The CLI auto-tries ports 18787-18792. If all are busy, free one up and retry.
 

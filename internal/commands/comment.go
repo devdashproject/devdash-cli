@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
-	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 )
 
@@ -19,15 +18,13 @@ Pass the text as the second argument or with --body:
   devdash comment <id> "Chose approach B because ..."
   devdash comment <id> --body="Chose approach B because ..."
 
+The <id> may be a full UUID (works from any directory, no project needed) or
+a prefix (resolved in the current project).
+
 Use this to record decisions, progress notes, or context that doesn't
 belong in the issue title or description.`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pid, err := d.requireProject(cmd)
-			if err != nil {
-				return err
-			}
-
 			body, _ := cmd.Flags().GetString("body")
 			if len(args) == 2 {
 				if body != "" {
@@ -39,12 +36,16 @@ belong in the issue title or description.`,
 				return fmt.Errorf("comment text is required: devdash comment <id> \"text\" (or --body=\"text\")")
 			}
 
-			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
+			uuid, pid, err := d.resolveBead(cmd, args[0])
 			if err != nil {
 				return err
 			}
 
-			if _, err = d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{ProjectID: pid, Content: body}); err != nil {
+			err = d.withBeadProject(uuid, pid, func(pid string) error {
+				_, err := d.Client.Post("/beads/"+uuid+"/comments", api.CommentRequest{ProjectID: pid, Content: body})
+				return err
+			})
+			if err != nil {
 				return err
 			}
 			fmt.Printf("Commented on %s\n", uuid)
@@ -66,17 +67,12 @@ in JSON format. Add --pretty for one line per comment. Use this to
 review the discussion history and any decisions recorded on an issue.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pid, err := d.requireProject(cmd)
+			uuid, pid, err := d.resolveBead(cmd, args[0])
 			if err != nil {
 				return err
 			}
 
-			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
-			if err != nil {
-				return err
-			}
-
-			data, err := d.Client.Get("/beads/" + uuid + "/comments?projectId=" + pid)
+			data, err := d.Client.Get("/beads/" + uuid + "/comments" + projectQuery(pid))
 			if err != nil {
 				return err
 			}

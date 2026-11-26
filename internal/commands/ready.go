@@ -58,6 +58,12 @@ Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 				}
 			}
 
+			// A blocker in another project is not in this list: look it up so a
+			// finished one stops blocking and is shown with its project name.
+			foreign := lookupForeignBlockers(d, beads, func(b api.Bead) bool { return b.Status == "pending" })
+			markForeignCompleted(completedIDs, foreign)
+			labels := foreignLabels(foreign)
+
 			var ready []api.Bead
 			for _, b := range beads {
 				if b.Status != "pending" {
@@ -85,7 +91,7 @@ Icons: ○ pending  ● in progress  ⊘ blocked  ✓ completed  ✗ failed`,
 			}
 
 			for _, b := range ready {
-				fmt.Println(output.FormatReadyLine(b))
+				fmt.Println(output.FormatReadyLineWithLabels(b, labels))
 			}
 			return nil
 		},

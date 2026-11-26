@@ -118,7 +118,7 @@ devdash blocked                           # See what's waiting
 | `session list [--limit=N]` | List recent session summaries |
 | `activity [--since=X]` | View activity log |
 | `report <id> --status=X` | Log agent progress (`code_complete\|committed\|pushed\|error`) |
-| `find <uuid>` | Cross-project task lookup |
+| `find <uuid>` | Cross-project task lookup (`show <uuid> --pretty` also works with no project and shows the project, parent, children and blockers; blockers in other projects show their project name, inaccessible ones "(no access)") |
 | `diagnose <id>` | Investigate task: status, job history, failure details |
 | `jobs [--bead=<id>]` | List recent jobs (optionally filtered by task) |
 | `reconcile-tasks` | Audit and fix backlog inconsistencies |
@@ -142,6 +142,8 @@ devdash blocked                           # See what's waiting
 ### Bead IDs
 
 Commands accept UUIDs, short prefixes (e.g., `27bf`), or local IDs. Ambiguous prefixes are rejected with suggestions.
+
+A **full UUID needs no project**: `show`, `comment`, `comments`, `update`, `close`, `delete`, `report` and `dep add|remove` work from any directory with no `.devdash`, `DD_PROJECT_ID` or `--project` (the server uses the issue's own project, and checks your access to it). Prefixes and local IDs are only unique within one project, so they still use the current project. Against an older server that still requires a project, the CLI looks up the issue's project with one extra request and retries.
 
 ### Agent integration
 
@@ -180,7 +182,7 @@ For a self-hosted API, set `DD_API_URL` explicitly or put `{"api_url":"https://y
 |-------|-----|
 | `devdash: command not found` | The install directory isn't on your `PATH`. Add the line the installer printed (default `~/.local/bin`) |
 | `not logged in` | Run `devdash login`, or set `DEVDASH_TOKEN` (see [Logging in without a browser](#logging-in-without-a-browser-ssh-ci-coding-agents)) |
-| `no project configured` | Run `devdash link` in your repo, or set `DD_PROJECT_ID`, or pass `--project` |
+| `no project configured` | Run `devdash link` in your repo, or set `DD_PROJECT_ID`, or pass `--project` (not needed when you pass a full issue UUID) |
 | `Port 18787 in use` during login | CLI auto-tries ports 18787-18792 |
 | `API error (401)` | Token expired or revoked: re-run `devdash login` |
 | Commands seem slow | API latency: ensure a good network connection |
