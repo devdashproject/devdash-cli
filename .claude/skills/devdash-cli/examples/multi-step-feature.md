@@ -65,49 +65,106 @@ The principle: **a different agent picking up child `acf16262` should be able to
 devdash create \
   --title="Build Go program to auto-generate Markdown docs from Cobra command tree" \
   --parent=642e62d4 --type=task --priority=2 --estimate=120 \
-  --description="# Goal\nCreate cmd/gen-docs/main.go ... [full detail including file paths,
-implementation notes, acceptance criteria omitted here for brevity]"
-# → Created: acf16262-2efa-430c-ba6a-972d366f5b10
+  --description="$(cat <<'EOF'
+# Goal
+Create cmd/gen-docs/main.go: walk the Cobra command tree (internal/commands.NewRootCmd)
+and write one Markdown page per command into docs/reference/.
+
+# Files
+- cmd/gen-docs/main.go (new)
+- docs/reference/*.md (generated; commit them)
+
+# Acceptance criteria
+- `go run ./cmd/gen-docs` regenerates docs/reference/ deterministically (second run = no diff)
+- Each page has the command's Short, Long, usage, and flag table
+EOF
+)"
+# → Created: acf16262-2efa-430c-ba6a-972d366f5b10 - Build Go program to auto-generate...
 
 # Child 2: docs/ scaffolding
 devdash create \
   --title="Create docs/ directory structure with Jekyll config for GitHub Pages" \
   --parent=642e62d4 --type=task --priority=2 --estimate=45 \
-  --description="# Goal\nScaffold docs/ with Jekyll config ... [directory tree, _config.yml snippet,
-theme choice (just-the-docs), acceptance criteria]"
-# → Created: aa754ab0-f71a-488b-a1f8-74d8235fa946
+  --description="$(cat <<'EOF'
+# Goal
+Scaffold docs/ so GitHub Pages can serve it with the just-the-docs theme.
+
+# Files
+- docs/_config.yml (title, theme: just-the-docs, baseurl)
+- docs/index.md (placeholder landing page)
+- docs/Gemfile
+
+# Acceptance criteria
+- `bundle exec jekyll build` succeeds locally from docs/
+EOF
+)"
+# → Created: aa754ab0-f71a-488b-a1f8-74d8235fa946 - Create docs/ directory structure...
 
 # Child 3: hand-written guides
 devdash create \
   --title="Write hand-curated guide content (landing, getting started, workflows)" \
   --parent=642e62d4 --type=task --priority=2 --estimate=180 \
-  --description="# Goal\nWrite landing page, getting-started, workflow guides ...
-[file list, style guide, front-matter examples, acceptance criteria]"
-# → Created: 58ae4f35-3823-43bc-96e8-941bd5c706d9
+  --description="$(cat <<'EOF'
+# Goal
+Write the human-facing pages: landing, getting started, and a workflow walkthrough.
+
+# Files
+- docs/index.md, docs/getting-started.md, docs/workflow.md
+- Each starts with just-the-docs front matter (title, nav_order)
+
+# Acceptance criteria
+- Getting started goes from install to first closed issue with copy-pasteable commands
+EOF
+)"
+# → Created: 58ae4f35-3823-43bc-96e8-941bd5c706d9 - Write hand-curated guide content...
 
 # Child 4: enable GitHub Pages
 devdash create \
   --title="Enable GitHub Pages serving from /docs folder on main" \
   --parent=642e62d4 --type=task --priority=2 --estimate=20 \
-  --description="# Goal\nTurn on Pages, source = main /docs, verify first deploy ...
-[step-by-step UI clicks, Jekyll plugin notes, acceptance criteria]"
-# → Created: 28e102b5-ea44-4f30-988c-403fb265cfe8
+  --description="$(cat <<'EOF'
+# Goal
+Turn on Pages: Settings > Pages > Source = Deploy from branch, main, /docs.
+
+# Acceptance criteria
+- First deploy succeeds and the site URL returns 200
+- The URL is recorded in the parent issue
+EOF
+)"
+# → Created: 28e102b5-ea44-4f30-988c-403fb265cfe8 - Enable GitHub Pages serving...
 
 # Child 5: CI workflow
 devdash create \
   --title="Add GitHub Action to regenerate command reference docs on CLI changes" \
   --parent=642e62d4 --type=task --priority=2 --estimate=60 \
-  --description="# Goal\nKeep docs/reference/ in sync via CI ...
-[full .github/workflows/docs.yml skeleton with peter-evans/create-pull-request, acceptance criteria]"
-# → Created: d4868102-91ab-4aea-aa93-62fa131eaf8e
+  --description="$(cat <<'EOF'
+# Goal
+Keep docs/reference/ in sync: on push to main touching internal/commands/**, run
+`go run ./cmd/gen-docs` and open a PR (peter-evans/create-pull-request) if there is a diff.
+
+# Files
+- .github/workflows/docs.yml (new)
+
+# Acceptance criteria
+- Editing a command's Short text produces a bot PR updating docs/reference/
+EOF
+)"
+# → Created: d4868102-91ab-4aea-aa93-62fa131eaf8e - Add GitHub Action to regenerate...
 
 # Child 6: publish + README
 devdash create \
   --title="Generate initial reference, publish first version, link from README" \
   --parent=642e62d4 --type=task --priority=2 --estimate=45 \
-  --description="# Goal\nRun generator, commit, push, verify public site, link from README ...
-[step list, click-through verification, acceptance criteria]"
-# → Created: 073f834a-4577-4423-a2d6-985a6b29726f
+  --description="$(cat <<'EOF'
+# Goal
+Run the generator, commit, push, verify the public site, and link it from README.md.
+
+# Acceptance criteria
+- Public site shows landing page, getting started, and the command reference
+- README.md links to the site
+EOF
+)"
+# → Created: 073f834a-4577-4423-a2d6-985a6b29726f - Generate initial reference...
 ```
 
 Note that priorities are identical here (all `2`) because no single child is on a critical path. If a release deadline forced "ship the public URL before any guides," child 4 (GitHub Pages enable) might bump to priority 1.
@@ -148,9 +205,10 @@ Reading: `devdash dep add <issue> <depends-on>` means "the first issue is blocke
 
 ```bash
 devdash ready
-# → Lists pending, unblocked issues. With the graph above, on day one this returns:
-#    acf16262 — Build Go program to auto-generate...
-#    aa754ab0 — Create docs/ directory structure...
+# → Lists pending, unblocked issues. With the graph above, on day one this returns
+#   one line per issue, in the form `<icon> <id> [P<priority>] [<type>] - <subject>`:
+#   ○ acf16262 [P2] [task] - Build Go program to auto-generate Markdown docs from Cobra command tree
+#   ○ aa754ab0 [P2] [task] - Create docs/ directory structure with Jekyll config for GitHub Pages
 ```
 
 After `[2]` closes:
@@ -164,7 +222,14 @@ This is the payoff: an agent never needs to read the dependency graph or remembe
 
 ## 7. Closing order
 
-Children close as their work lands. The parent stays open until every child closes, then closes last with a roll-up summary citing the children:
+Children close as their work lands. When the **last** child closes, the server closes the parent automatically (with no summary) and `devdash close` tells you so:
+
+```
+Parent 642e62d4 "Build auto-generated CLI help docs..." closed automatically: all its children are done.
+  Add an overall summary: devdash close 642e62d4 --summary="..."
+```
+
+Follow that hint: closing an already-closed issue **replaces** its summary, commit and PR, so this is how the parent gets its roll-up summary citing the children:
 
 ```bash
 devdash close 642e62d4 \

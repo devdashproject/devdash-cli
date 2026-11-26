@@ -27,7 +27,7 @@ Every unit of work follows this exact loop. No exceptions.
 
 ```bash
 # 1. CREATE — before any file reads or code edits.
-devdash create --subject="Fix login redirect bug" --type=bug --priority=2 \
+devdash create --title="Fix login redirect bug" --type=bug --priority=2 \
   --description="When users hit /login while authenticated, they should..."
 # → Created: 642e62d4-... - Fix login redirect bug
 
@@ -69,31 +69,31 @@ The pattern:
 
 ```bash
 # Parent first — capture the big-picture goal, approach, acceptance criteria.
-devdash create --subject="Build CLI docs site" --type=feature \
+devdash create --title="Build CLI docs site" --type=feature \
   --description="Hybrid: auto-generated reference + hand-written guides..."
 # → PARENT_ID = 9b5dae5b
 
 # Children with --parent — each gets enough detail that another agent could execute it cold.
-devdash create --parent=9b5dae5b --subject="Build doc generator" \
+devdash create --parent=9b5dae5b --title="Build doc generator" \
   --description="cmd/gen-docs/main.go that walks Cobra tree..."
-devdash create --parent=9b5dae5b --subject="Set up Jekyll" \
+devdash create --parent=9b5dae5b --title="Set up Jekyll" \
   --description="docs/_config.yml with just-the-docs theme..."
 
 # Dependencies — when one child blocks another.
 devdash dep add <child-b-id> <child-a-id>   # child-b depends on child-a
 ```
 
-Sequence of completion: work through children (each: in_progress → commit → close), then close the parent **last** with a roll-up summary citing the child commits.
+Sequence of completion: work through children (each: in_progress → commit → close). When the **last** child closes, the server closes the parent automatically *without a summary* and `devdash close` prints a hint. Follow it: `devdash close <parent> --summary="…"` on an already-closed issue **replaces** its summary, so this is how the parent gets its roll-up summary citing the child commits.
 
 For the full pattern with a worked example, see `references/decomposition.md`.
 
-## Top-10 command cheatsheet
+## Command cheatsheet
 
 | Command | What it does | Example |
 |---------|--------------|---------|
 | `devdash ready` | List pending, unblocked issues you can pick up | `devdash ready` |
 | `devdash show <id>` | Full issue detail (description, deps, parent) | `devdash show 642e62d4` |
-| `devdash create` | Make a new issue | `devdash create --subject="…" --type=task` |
+| `devdash create` | Make a new issue | `devdash create --title="…" --type=task` |
 | `devdash update <id>` | Change status, priority, etc. | `devdash update 642e62d4 --status=in_progress` |
 | `devdash close <id>` | Close with summary + commit | `devdash close 642e... --summary="…" --commit=$(git rev-parse HEAD)` |
 | `devdash list` | Filter issues | `devdash list --status=pending --mine` |
@@ -101,13 +101,14 @@ For the full pattern with a worked example, see `references/decomposition.md`.
 | `devdash comment <id>` | Add a note to an issue | `devdash comment 642e... --body="Blocked on auth API"` |
 | `devdash help <topic>` | On-demand reference | `devdash help workflow` |
 | `devdash project list` | All projects you can access | `devdash project list` |
+| `devdash session save` | Leave a handoff note for the next session (project memory) | `devdash session save --summary="Done X; next: Y (see src/foo.go)"` |
 
 ## Common flags for `devdash create`
 
 | Flag | Purpose | Values |
 |------|---------|--------|
-| `--subject` | Issue title (primary form) | string |
-| `--title` | Deprecated alias for `--subject` | string |
+| `--title` | Issue title (required) | string |
+| `--subject` | Synonym for `--title` | string |
 | `--description` | Markdown body | string — use bash heredoc for multi-line |
 | `--type` | Category | `task` (default), `bug`, `feature`, `enhancement`, `thought` |
 | `--priority` | Urgency | `0`=critical, `1`=high, `2`=medium (default), `3`=low, `4`=backlog |
@@ -119,7 +120,7 @@ For the full pattern with a worked example, see `references/decomposition.md`.
 Use bash heredocs for descriptions with markdown — they survive shell escaping cleanly:
 
 ```bash
-devdash create --subject="..." --description="$(cat <<'EOF'
+devdash create --title="..." --description="$(cat <<'EOF'
 # Goal
 ...
 # Acceptance criteria
@@ -163,13 +164,15 @@ The CLI itself also exposes on-demand help:
 - `devdash help close` — close summary expectations with examples
 - `devdash help pr` — PR footer format and multi-issue PRs
 - `devdash help projects` — cross-project dependencies and multi-repo work
+- `devdash help auth` — logging in: browser, API token, `DEVDASH_TOKEN`
+- `devdash help report` — reporting progress
 
 ## A clean turn looks like this
 
 User: *"Can you fix the login redirect bug we hit yesterday?"*
 
 You:
-1. `devdash create --subject="Fix login redirect bug" --type=bug --priority=1 --description="..."` → capture ID
+1. `devdash create --title="Fix login redirect bug" --type=bug --priority=1 --description="..."` → capture ID
 2. `devdash update <id> --status=in_progress`
 3. (read code, edit files, run tests)
 4. `git add ... && git commit -m "..." && git push`
