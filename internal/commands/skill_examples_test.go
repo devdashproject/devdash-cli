@@ -48,9 +48,10 @@ func splitArgs(line string) []string {
 				cur.WriteRune(r)
 			}
 		case depth > 0:
-			if r == '(' {
+			switch r {
+			case '(':
 				depth++
-			} else if r == ')' {
+			case ')':
 				depth--
 			}
 		case r == '"' || r == '\'':
@@ -102,7 +103,9 @@ func TestSkillExamplesMatchCLI(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, m := range fenceRe.FindAllStringSubmatch(string(raw), -1) {
+		// A Windows checkout may use CRLF; the parser below assumes \n.
+		text := strings.ReplaceAll(string(raw), "\r\n", "\n")
+		for _, m := range fenceRe.FindAllStringSubmatch(text, -1) {
 			block := contRe.ReplaceAllString(m[1], "")
 			block = heredocRe.ReplaceAllString(block, `"x"`)
 			for _, line := range strings.Split(block, "\n") {
