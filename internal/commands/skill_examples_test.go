@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// The installed skill (.claude/skills/devdash-cli) is what agents copy
-// commands from. This test keeps it honest: every `devdash`/`dd` command in a
+// The skill (.claude/skills/devdash-cli) and the onboarding docs (README.md,
+// GETTING-STARTED.md) are what agents and new users copy commands from. This test keeps it honest: every `devdash`/`dd` command in a
 // fenced code block must name a real command, and every --flag must exist on
 // it. Heredoc bodies and trailing comments are ignored.
 
@@ -82,6 +82,10 @@ func TestSkillExamplesMatchCLI(t *testing.T) {
 		}
 		return nil
 	})
+	// The onboarding docs are also copy-pasted by new users: check them too.
+	for _, doc := range []string{"README.md", "GETTING-STARTED.md"} {
+		files = append(files, filepath.Join("..", "..", doc))
+	}
 	if len(files) == 0 {
 		t.Skip("skill directory not present")
 	}
