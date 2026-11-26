@@ -14,7 +14,9 @@ The available topics:
 | `workflow` | Decomposition patterns, parent/child rules, dependency semantics, when an issue should be split. | You're about to decompose a feature and want the canonical pattern. |
 | `close` | Close-summary expectations with several worked examples. | Before writing a close summary on a non-trivial issue. |
 | `pr` | The footer block agents are expected to append to PRs that close issues (e.g. `Closes devdash 642e...`), and how to scope multi-issue PRs. | Before opening a PR that closes one or more devdash issues. |
-| `projects` | Cross-project dependencies and multi-repo work. | When the user's task spans more than one project, or when you need to reason about `DD_PROJECT_ID`. |
+| `projects` (alias of `cross-project`) | Cross-project dependencies and multi-repo work. | When the user's task spans more than one project, or when you need to reason about `DD_PROJECT_ID`. |
+| `auth` | Logging in: browser login, API token, `DEVDASH_TOKEN`. | `devdash` reports an auth/401 error, or you are setting up a new machine or CI. |
+| `report` | Reporting progress on an issue for dashboards. | Only when a runner is expected to post progress with `devdash report`. |
 
 Invocation pattern is uniform:
 
@@ -24,6 +26,8 @@ devdash help workflow
 devdash help close
 devdash help pr
 devdash help projects
+devdash help auth
+devdash help report
 ```
 
 These output to stdout in human-readable form (not JSON). Pipe to a pager or read inline.

@@ -34,7 +34,7 @@ When in doubt, prefer single — over-decomposition creates ceremony with no pay
 
 ```bash
 # 1. Create the parent first. Capture goal, approach, acceptance criteria.
-devdash create --subject="<big-picture goal>" --type=feature --priority=2 \
+devdash create --title="<big-picture goal>" --type=feature --priority=2 \
   --description="$(cat <<'EOF'
 # Goal
 ...
@@ -49,7 +49,7 @@ EOF
 # 2. Create each child with --parent=<parent-uuid>. Give each child enough
 #    detail that another agent could execute it cold — file paths, flag
 #    values, acceptance criteria.
-devdash create --parent=<parent-uuid> --subject="<sub-task>" \
+devdash create --parent=<parent-uuid> --title="<sub-task>" \
   --description="$(cat <<'EOF'
 # Goal
 ...
@@ -102,14 +102,22 @@ In this session we decomposed "build auto-generated CLI help docs hosted on GitH
 
 ```bash
 # Parent
-devdash create --title="Build auto-generated CLI help docs..." --type=feature \
-  --priority=2 --description="$(cat <<'EOF' ... EOF)"
-# → Created: 642e62d4-...
+devdash create --title="Build auto-generated CLI help docs" --type=feature --priority=2 \
+  --description="$(cat <<'EOF'
+# Goal
+Public help site for the CLI, auto-regenerated from the Cobra command tree.
+# Acceptance
+- Site loads; editing a command's help text updates it automatically
+EOF
+)"
+# → Created: 642e62d4-3165-4102-ad31-53abe7c512ff - Build auto-generated CLI help docs
 
-# Children — note --parent= on each
-devdash create --title="Build Go program..." --parent=642e62d4-... --type=task \
-  --priority=2 --estimate=120 --description="..."
-# ... five more children ...
+# Children — note --parent= on each (full descriptions: examples/multi-step-feature.md)
+devdash create --title="Build Go program to auto-generate Markdown docs" --parent=642e62d4 \
+  --type=task --priority=2 --estimate=120 \
+  --description="Create cmd/gen-docs/main.go walking the Cobra tree; acceptance: deterministic output."
+# → Created: acf16262-... - Build Go program to auto-generate Markdown docs
+# ... five more children, same pattern ...
 
 # Dependencies — note "X depends on Y" reads as: X is blocked by Y
 devdash dep add 58ae4f35 aa754ab0   # guides need scaffolding
@@ -127,7 +135,7 @@ devdash dep add 073f834a d4868102
 - **Two roots (1, 2).** Generator and scaffolding are independent — different agents could pick them up in parallel.
 - **Pages and guides fan out from scaffolding.** Both need the `docs/` directory to exist; once it does, both can proceed.
 - **CI fans out from the generator.** No point wiring CI before the thing it runs exists.
-- **Publish is the sink.** It validates everything together. Closing it triggers closing the parent.
+- **Publish is the sink.** It validates everything together. When the last child closes, the server closes the parent automatically (without a summary) — then run `devdash close <parent> --summary="…"` to replace it with the roll-up summary.
 
 **Why not different shapes:**
 

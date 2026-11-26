@@ -54,7 +54,7 @@ Capture that UUID — every subsequent command needs it.
 
 ```bash
 devdash update 5af2b7f4 --status=in_progress
-# → Updated: 5af2b7f4-e700-4a1a-9e56-bd69c708b3af
+# → Updated: 5af2b7f4-e700-4a1a-9e56-bd69c708b3af (status)
 
 git checkout -b chore/remove-devdash-test-binary
 # → Switched to a new branch 'chore/remove-devdash-test-binary'

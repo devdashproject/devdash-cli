@@ -84,7 +84,7 @@ devdash needs an API token. Pick whichever fits your environment:
 
 ## Getting a token
   Run 'devdash token create "my laptop"' on a machine that is already
-  logged in, or create one in the web app under Settings.
+  logged in.
 
 ## Where tokens live
   DEVDASH_TOKEN wins if set; otherwise the token file at

@@ -19,13 +19,13 @@ Full flag and argument detail for every non-hidden `devdash` command. Read this 
 Create a new issue. Returns the created UUID on stdout.
 
 ```bash
-devdash create --subject="<title>" [flags]
+devdash create --title="<title>" [flags]
 ```
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--subject` | string | — | Issue title. Required (or use `--title`). |
-| `--title` | string | — | Deprecated alias for `--subject`. |
+| `--title` | string | — | Issue title. Required. |
+| `--subject` | string | — | Synonym for `--title`. |
 | `--description` | string | `""` | Markdown body. Use bash heredoc for multi-line. |
 | `--type` | string | `task` | One of: `task`, `bug`, `feature`, `enhancement`, `thought`. |
 | `--priority` | int | `2` | `0`=critical, `1`=high, `2`=medium, `3`=low, `4`=backlog. |
@@ -34,10 +34,10 @@ devdash create --subject="<title>" [flags]
 | `--estimate` | int | — | Minutes to complete. |
 | `--sort-order` | int | — | Display order among siblings (0-based). |
 
-Subjects starting with `-` are rejected to avoid flag-collision bugs; use `--subject="-foo"` explicitly if needed.
+Titles starting with `-` are rejected to avoid flag-collision bugs; use the `=` form (`--title="-foo"`) if you really need one.
 
 ```bash
-devdash create --subject="Fix login redirect" --type=bug --priority=1 \
+devdash create --title="Fix login redirect" --type=bug --priority=1 \
   --description="$(cat <<'EOF'
 When ?next=/admin is supplied to /login, the redirect ignores it.
 Acceptance: ?next= is honored when target is same-origin.
@@ -56,7 +56,7 @@ devdash update <id> [flags]
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `--status` | string | `pending`, `in_progress`, or `completed`. |
+| `--status` | string | `pending`, `ready`, `in_progress`, `completed`, `blocked`, `failed`, or `archived`. To start work use `in_progress`; to finish, prefer `close`. |
 | `--title` | string | New subject/title. |
 | `--description` | string | New markdown body. |
 | `--priority` | int | `0`–`4`. |
@@ -69,7 +69,7 @@ devdash update <id> [flags]
 
 ```bash
 devdash update 642e62d4 --status=in_progress
-# → Updated: 642e62d4-...
+# → Updated: 642e62d4-3165-4102-ad31-53abe7c512ff (status)
 
 devdash update 642e62d4 --priority=0 --owner=jason.w.massey@gmail.com
 ```
@@ -93,8 +93,10 @@ devdash close 642e62d4 \
   --summary="Fixed by honoring ?next= when same-origin. Edge case: javascript: scheme rejected." \
   --commit=$(git rev-parse HEAD) \
   --pr=https://github.com/org/repo/pull/123
-# → Closed: 642e62d4-...
+# → Closed: 642e62d4-3165-4102-ad31-53abe7c512ff
 ```
+
+Closing the last open child of a parent also closes the parent automatically (no summary); `close` prints `Parent … closed automatically` with a hint. Re-run `devdash close <parent> --summary="…"` to add the roll-up summary — closing an already-closed issue **replaces** its summary, commit and PR.
 
 When closing multiple sibling issues at once (e.g. on a roll-up commit), pass several IDs:
 
@@ -120,10 +122,11 @@ devdash ready [--since=<duration>]
 
 ### `devdash show <id>`
 
-Full issue detail as JSON: subject, description, status, priority, parent, dependencies, comments-count, etc. Use this to confirm an issue's state before acting on it.
+Full issue detail as JSON: subject, description, status, priority, parent, dependencies, comments-count, etc. Use this to confirm an issue's state before acting on it. Add `--pretty` for a short human-readable view instead of JSON.
 
 ```bash
 devdash show 642e62d4
+devdash show 642e62d4 --pretty
 ```
 
 ### `devdash list`
@@ -132,10 +135,11 @@ List issues with filters. Composes flags freely.
 
 | Flag | Description |
 |------|-------------|
-| `--status` | `pending`, `in_progress`, or `completed`. |
+| `--status` | `pending`, `ready`, `in_progress`, `completed`, `blocked`, `failed`, `archived`, or `open` (= pending + in_progress + blocked). |
 | `--since` | `Nh` / `Nd` / `Nw` / `YYYY-MM-DD` (filters on `updatedAt`). |
 | `--parent` | Show only children of a given parent. |
 | `--mine` | Issues assigned to the current user (calls `/auth/me`). |
+| `--tree` | Indent children under their parents. |
 
 ```bash
 devdash list --status=in_progress --mine
@@ -168,7 +172,11 @@ Activity log for the project, or for a single issue if `<id>` is supplied. Inclu
 
 ### `devdash comments <id>`
 
-List all comments on an issue. (Note: `comments` is plural; `comment` (singular) adds one.)
+List all comments on an issue as JSON (`--pretty` for one line each). Note: `comments` is plural; `comment` (singular) adds one.
+
+```bash
+devdash comments 642e62d4 --pretty
+```
 
 ### `devdash stats`
 
@@ -197,6 +205,40 @@ Add a comment to an issue.
 ```bash
 devdash comment 642e62d4 --body="Spec changed: ?next= must accept relative paths only."
 ```
+
+---
+
+## Session memory
+
+### `devdash session save --summary="…"`
+
+Save a short handoff note to the project's memory: what you did, what is left, and anything the next session must know. It appears as **Recent Sessions** in the Memory tab and is returned to agents in project context. Requires the `manage_memory` permission. Run it at the end of a session or before handing work off.
+
+```bash
+devdash session save --summary="Pagination done (api/list.go). Remaining: cursor tests in api/list_test.go; decision: opaque base64 cursors."
+# → Saved session: 3f0c1b7e-...
+```
+
+### `devdash session list [--limit=N]`
+
+Recent session summaries for the project, newest first, as JSON (default 10, max 100).
+
+---
+
+## Import and delete
+
+### `devdash import <issue-number> | --all [--state=open|all]`
+
+Import GitHub issues as DevDash issues. Needs a project with a linked GitHub repository. Prints the imported issue ID, or a count with `--all`.
+
+```bash
+devdash import 123
+devdash import --all --state=open
+```
+
+### `devdash delete <id> [<id>...] [--cascade] [--force]`
+
+**Permanently deletes** issues — irreversible. Prefer `devdash close` unless the issue was created by mistake. `--cascade` also deletes children; in a terminal it asks for confirmation unless `--force`; non-interactive runs (agents, scripts) do **not** prompt, so double-check the ID with `devdash show <id> --pretty` first.
 
 ---
 

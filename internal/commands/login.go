@@ -38,8 +38,8 @@ No browser (CI, SSH, coding agents)? Use an existing API token instead:
   devdash login --token=dd_...              Verify and save the token
   echo "$TOKEN" | devdash login --with-token  Same, read from stdin
   export DEVDASH_TOKEN=dd_...               Use it without saving (no login needed)
-Create a token with 'devdash token create' on a logged-in machine, or in
-the web app under Settings. See 'devdash help auth'.`,
+Create a token with 'devdash token create' on a logged-in machine.
+See 'devdash help auth'.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return fmt.Errorf("unexpected argument %q — to log in with an API token use: devdash login --token=dd_... (or pipe it to: devdash login --with-token)", maskSecrets(args[0]))
@@ -187,7 +187,7 @@ func loginWithToken(cfg *config.Config, token string) error {
 	if _, err := client.Get("/projects"); err != nil {
 		var apiErr *api.APIError
 		if errors.As(err, &apiErr) && (apiErr.StatusCode == 401 || apiErr.StatusCode == 403) {
-			return fmt.Errorf("token rejected by %s (HTTP %d); nothing was saved. Check the token, or create a new one with 'devdash token create' or in the web app under Settings", cfg.APIURL, apiErr.StatusCode)
+			return fmt.Errorf("token rejected by %s (HTTP %d); nothing was saved. Check the token, or create a new one with 'devdash token create' on a logged-in machine", cfg.APIURL, apiErr.StatusCode)
 		}
 		return fmt.Errorf("could not verify token against %s; nothing was saved: %w", cfg.APIURL, err)
 	}

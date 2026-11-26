@@ -19,12 +19,6 @@ They stay in sync automatically. Use whichever feels right for the moment.
 curl -fsSL https://raw.githubusercontent.com/devdashproject/devdash-cli/main/install.sh | sh
 ```
 
-Or via npm:
-
-```bash
-npm install -g @devdashproject/devdash-cli
-```
-
 Verify it worked:
 
 ```bash

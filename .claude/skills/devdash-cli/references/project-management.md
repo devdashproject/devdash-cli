@@ -69,7 +69,7 @@ Source precedence inside `move` is:
 
 ## Worked example: rescuing a misfiled issue
 
-Suppose you ran `devdash create --subject="Fix typo in landing page"` from inside the wrong repo, and the issue landed in the `devdash-cli-go` project (`47eb046a-...`) instead of `dd-landing-page` (`aebcb113-...`) where it belongs.
+Suppose you ran `devdash create --title="Fix typo in landing page"` from inside the wrong repo, and the issue landed in the `devdash-cli-go` project (`47eb046a-...`) instead of `dd-landing-page` (`aebcb113-...`) where it belongs.
 
 The issue's short ID, from the `create` output, is `7c8d9e0f`.
 
