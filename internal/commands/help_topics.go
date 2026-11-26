@@ -157,8 +157,8 @@ devdash needs an API token. Pick whichever fits your environment:
   import <issue-number> | --all       Import GitHub issues (--state=open|all)
 
 ## ID Formats
-  Full UUID:    27bf66bd-945f-4714-93fd-0c3322b720f4
-  Short prefix: 27bf (any unique prefix)
+  Full UUID:    27bf66bd-945f-4714-93fd-0c3322b720f4  (works with no project configured)
+  Short prefix: 27bf (any unique prefix; resolved in the current project)
   Local ID:     dev-dash-42 (project-scoped)
 
 ## --since Format
@@ -285,6 +285,18 @@ read them to understand what happened.
 
 ## Targeting a Different Project
   DD_PROJECT_ID=<full-uuid> devdash <command>
+
+## Using a Full UUID Without a Project
+  show, comment, comments, update, close, delete, report and dep add/remove
+  accept a full UUID from any directory, with no .devdash, DD_PROJECT_ID or
+  --project. No projectId is sent; the server checks your permission against
+  the issue's own project.
+    devdash show <full-uuid>
+    devdash comment <full-uuid> "note"
+    devdash close <full-uuid> --summary="..."
+  Short prefixes and local IDs are only unique within one project, so they
+  still use the current project. (Older servers that still require a project:
+  the CLI looks the issue's project up first and retries.)
 
 ## Finding Beads Across Projects
   devdash find <full-uuid>

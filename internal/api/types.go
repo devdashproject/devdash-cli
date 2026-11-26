@@ -73,6 +73,7 @@ type Bead struct {
 	Siblings         []BeadSummary `json:"siblings,omitempty"`
 	Comments         []BeadComment `json:"comments,omitempty"`
 	Parent           *BeadSummary  `json:"parent,omitempty"`
+	Project          *ProjectRef   `json:"project,omitempty"`
 	BlockedByDetails []BeadSummary `json:"blockedByDetails,omitempty"`
 	BlocksDetails    []BeadSummary `json:"blocksDetails,omitempty"`
 	RecentJobs       []JobSummary  `json:"recentJobs,omitempty"`
@@ -81,13 +82,24 @@ type Bead struct {
 	UpdatedAt FlexTime `json:"updatedAt"`
 }
 
-// BeadSummary is a lightweight reference to a related issue.
+// ProjectRef is the {id, name} project reference on GET /beads/:id.
+type ProjectRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// BeadSummary is a lightweight reference to a related issue. Blocker entries
+// from newer servers also carry the blocker's project; Inaccessible marks a
+// blocker in a project the caller cannot see (its subject is redacted).
 type BeadSummary struct {
-	ID       string `json:"id"`
-	Subject  string `json:"subject"`
-	Status   string `json:"status"`
-	BeadType string `json:"beadType,omitempty"`
-	Priority int    `json:"priority"`
+	ID           string `json:"id"`
+	Subject      string `json:"subject"`
+	Status       string `json:"status"`
+	BeadType     string `json:"beadType,omitempty"`
+	Priority     int    `json:"priority"`
+	ProjectID    string `json:"projectId,omitempty"`
+	ProjectName  string `json:"projectName,omitempty"`
+	Inaccessible bool   `json:"inaccessible,omitempty"`
 }
 
 // BeadComment is a comment on an issue.
@@ -210,7 +222,7 @@ type CreateBeadRequest struct {
 
 // UpdateBeadRequest is the body for PATCH /beads/{id}.
 type UpdateBeadRequest struct {
-	ProjectID        string          `json:"projectId"`
+	ProjectID        string          `json:"projectId,omitempty"`
 	Subject          *string         `json:"subject,omitempty"`
 	Description      *string         `json:"description,omitempty"`
 	Status           *string         `json:"status,omitempty"`
@@ -225,7 +237,7 @@ type UpdateBeadRequest struct {
 
 // CloseBeadRequest is the body for closing a single bead.
 type CloseBeadRequest struct {
-	ProjectID        string            `json:"projectId"`
+	ProjectID        string            `json:"projectId,omitempty"`
 	Status           string            `json:"status"`
 	CompletionResult *CompletionResult `json:"completionResult,omitempty"`
 }
@@ -238,7 +250,7 @@ type MoveBeadRequest struct {
 
 // BulkCloseRequest is the body for POST /beads/bulk/close.
 type BulkCloseRequest struct {
-	ProjectID string          `json:"projectId"`
+	ProjectID string          `json:"projectId,omitempty"`
 	Beads     []BulkCloseItem `json:"beads"`
 }
 
@@ -253,7 +265,7 @@ type BulkCloseItem struct {
 
 // ReportRequest is the body for POST /beads/{id}/report.
 type ReportRequest struct {
-	ProjectID    string `json:"projectId"`
+	ProjectID    string `json:"projectId,omitempty"`
 	Status       string `json:"status"`
 	Summary      string `json:"summary,omitempty"`
 	FilesChanged *int   `json:"filesChanged,omitempty"`
@@ -264,13 +276,13 @@ type ReportRequest struct {
 
 // AddDependencyRequest is the body for POST /beads/{id}/dependencies.
 type AddDependencyRequest struct {
-	ProjectID string `json:"projectId"`
+	ProjectID string `json:"projectId,omitempty"`
 	BlockedBy string `json:"blockedBy"`
 }
 
 // CommentRequest is the body for POST /beads/{id}/comments.
 type CommentRequest struct {
-	ProjectID string `json:"projectId"`
+	ProjectID string `json:"projectId,omitempty"`
 	Content   string `json:"content"`
 }
 

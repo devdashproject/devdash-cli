@@ -141,7 +141,7 @@ EOF
 | `devdash ready` / `stats` on session start | Trust the `devdash prime` hook; skip manual inventory |
 | Sibling issues for one linear task | Single issue is fine — don't over-split |
 | Creating an issue, then immediately closing it without commits | Close requires a real commit and a real summary |
-| Hardcoding full UUIDs everywhere | Short 8-char prefixes work and read better |
+| Hardcoding full UUIDs everywhere | Short 8-char prefixes work and read better. Use a full UUID when you have no project configured or the issue is in another project: `show`, `comment`, `update`, `close`, `dep` accept it from any directory |
 
 ## Pointers to references
 

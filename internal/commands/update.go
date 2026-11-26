@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/devdashproject/devdash-cli/internal/api"
-	"github.com/devdashproject/devdash-cli/internal/resolve"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -25,22 +24,18 @@ At least one flag must be provided or the command returns an error.
 
 Use --sort-order=none to remove explicit ordering (reverts to priority/date fallback).
 
-The <id> argument accepts full UUIDs or short prefixes that uniquely
-identify an issue within the current project.`,
+The <id> argument accepts a full UUID, which works from any directory with
+no project configured (the server uses the issue's own project), or a short
+prefix that uniquely identifies an issue within the current project.
+Archive an issue with --status=archived.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pid, err := d.requireProject(cmd)
-			if err != nil {
-				return err
-			}
-
-			uuid, err := resolve.IDWithFetch(args[0], d.Client, pid)
+			uuid, pid, err := d.resolveBead(cmd, args[0])
 			if err != nil {
 				return err
 			}
 
 			req := api.UpdateBeadRequest{}
-			req.ProjectID = pid
 			hasChanges := false
 
 			if cmd.Flags().Changed("status") {
@@ -78,7 +73,7 @@ identify an issue within the current project.`,
 			}
 			if cmd.Flags().Changed("parent") {
 				v, _ := cmd.Flags().GetString("parent")
-				parentUUID, err := resolve.IDWithFetch(v, d.Client, pid)
+				parentUUID, _, err := d.resolveBead(cmd, v)
 				if err != nil {
 					return fmt.Errorf("failed to resolve parent ID: %w", err)
 				}
@@ -119,7 +114,13 @@ identify an issue within the current project.`,
 				return fmt.Errorf("no changes specified")
 			}
 
-			data, err := d.Client.Patch("/beads/"+uuid, req)
+			var data []byte
+			err = d.withBeadProject(uuid, pid, func(pid string) error {
+				req.ProjectID = pid
+				var perr error
+				data, perr = d.Client.Patch("/beads/"+uuid, req)
+				return perr
+			})
 			if err != nil {
 				return err
 			}

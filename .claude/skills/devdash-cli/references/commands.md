@@ -5,7 +5,7 @@ Full flag and argument detail for every non-hidden `devdash` command. Read this 
 **Source of truth:** flag definitions live in `internal/commands/*.go`. When you must verify a flag, read the relevant `.go` file rather than trusting paraphrase.
 
 **Conventions used below:**
-- `<id>` → an issue/bead UUID. The CLI accepts the first 8 characters as a unique prefix.
+- `<id>` → an issue/bead UUID. The CLI accepts the first 8 characters as a unique prefix, resolved in the current project. A **full UUID** needs no project at all: `show`, `comment`, `comments`, `update`, `close`, `delete`, `report` and `dep add|remove` work from any directory with no `.devdash` or `DD_PROJECT_ID` (the server uses the issue's own project).
 - `<flag>` → a required value.
 - `[<flag>]` → optional.
 - All commands honor the persistent `--project <uuid-or-prefix>` flag to override the project.

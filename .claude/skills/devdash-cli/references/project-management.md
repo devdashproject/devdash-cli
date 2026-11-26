@@ -12,6 +12,8 @@ When a command needs a project ID, the CLI looks in this order, taking the first
 
 If none of these is set, the CLI returns an error like `no project configured — run 'devdash link' or set DD_PROJECT_ID`.
 
+**Exception: full issue UUIDs.** `show`, `comment`, `comments`, `update`, `close`, `delete`, `report` and `dep add|remove` given a full 36-character UUID need no project: nothing is read from `--project`, `DD_PROJECT_ID` or `.devdash`, no projectId is sent, and the server checks permission against the issue's own project. Short prefixes and local IDs are only unique within one project, so they still require the current project. Project-wide commands (`list`, `ready`, `create`, ...) always need one.
+
 ## Short prefix resolution
 
 Every flag, argument, or env var that expects a project ID also accepts the first 8+ characters of the UUID, as long as the prefix is unambiguous across projects you can access:
@@ -22,7 +24,7 @@ DD_PROJECT_ID=47eb devdash ready                  # works if no other project st
 DD_PROJECT_ID=47 devdash ready                    # fails: ambiguous prefix
 ```
 
-The same applies to issue IDs. Use prefixes — they read better and the cost of an occasional collision is low (the CLI tells you when it happens, with the matching candidates).
+The same applies to issue IDs (within the current project). Use prefixes — they read better and the cost of an occasional collision is low (the CLI tells you when it happens, with the matching candidates).
 
 ## Listing projects
 
