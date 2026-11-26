@@ -148,7 +148,7 @@ devdash list --parent=9b5dae5b --status=pending
 
 ### `devdash find <uuid>`
 
-Cross-project lookup by full UUID. Use when you have an issue ID but don't know which project it lives in.
+Cross-project lookup by full UUID. Use when you have an issue ID but don't know which project it lives in. (`devdash show <full-uuid> --pretty` also works with no project and shows the project name, description, parent, children and blockers; when an ID is not found, the server's hint and candidates are printed.)
 
 ### `devdash blocked`
 
@@ -188,7 +188,7 @@ Project health: open / in-progress / blocked / completed counts.
 
 ### `devdash dep add <issue> <depends-on>`
 
-Declare `<issue>` is blocked until `<depends-on>` is completed. Both args resolve as UUID or short prefix.
+Declare `<issue>` is blocked until `<depends-on>` is completed. Both args resolve as UUID or short prefix. A full-UUID `<depends-on>` may live in another project you can access (cross-project dependency; cycles across projects are rejected); the output names that project.
 
 ```bash
 devdash dep add 25c08147 9cb5aa55   # references blocked until SKILL.md is done

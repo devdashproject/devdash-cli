@@ -21,8 +21,14 @@ func TestPrettyBead(t *testing.T) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, "null") || strings.Contains(out, "Blocks:") {
-		t.Errorf("should skip null/empty fields:\n%s", out)
+	if strings.Contains(out, "null") {
+		t.Errorf("should skip null fields:\n%s", out)
+	}
+	// Relations are explicit about being empty rather than silently omitted.
+	for _, want := range []string{"Blocks:      none"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
 	}
 }
 

@@ -118,7 +118,7 @@ devdash blocked                           # See what's waiting
 | `session list [--limit=N]` | List recent session summaries |
 | `activity [--since=X]` | View activity log |
 | `report <id> --status=X` | Log agent progress (`code_complete\|committed\|pushed\|error`) |
-| `find <uuid>` | Cross-project task lookup |
+| `find <uuid>` | Cross-project task lookup (`show <uuid> --pretty` also works with no project and shows the project, parent, children and blockers; blockers in other projects show their project name, inaccessible ones "(no access)") |
 | `diagnose <id>` | Investigate task: status, job history, failure details |
 | `jobs [--bead=<id>]` | List recent jobs (optionally filtered by task) |
 | `reconcile-tasks` | Audit and fix backlog inconsistencies |

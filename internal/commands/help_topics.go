@@ -311,7 +311,24 @@ read them to understand what happened.
   Use full UUIDs for cross-project bead references:
     devdash dep add <issue-uuid> <blocker-uuid-from-other-project>
 
-  The server verifies you have access to both projects.`,
+  The server verifies you have access to both projects, and rejects
+  dependency cycles that span projects. After "dep add" the CLI names the
+  blocker's project when it differs from the issue's.
+
+## Seeing Foreign Blockers
+  devdash show <id> --pretty   Project, description, parent, children, and
+                               blockers; a blocker in another project is shown
+                               "(project: <name>)", one you cannot access as
+                               "(no access)", and an empty relation as "none".
+  devdash blocked              Foreign blockers are labelled with their project.
+  devdash ready                A blocker finished in another project no longer
+                               blocks, and is noted with its project.
+
+## When an ID is Not Found
+  The server's hint is printed with the error: what it searched, whether the
+  bead exists in another project you can access (with that project's name),
+  and candidate matches for an ambiguous or too-short prefix. Retry with the
+  full UUID.`,
 
 	"report": `# Progress Reporting (Optional)
 

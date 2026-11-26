@@ -52,7 +52,7 @@ local IDs are resolved in the current project.`,
 				return err
 			}
 
-			fmt.Printf("Added dependency: %s depends on %s\n", shortID(issueUUID), shortID(depUUID))
+			fmt.Printf("Added dependency: %s depends on %s%s\n", shortID(issueUUID), shortID(depUUID), d.foreignBlockerNote(issueUUID, depUUID))
 			return nil
 		},
 	})
@@ -116,4 +116,31 @@ func (d *Deps) resolveDepPair(cmd *cobra.Command, args []string) (issueUUID, dep
 		pid = ""
 	}
 	return issueUUID, depUUID, pid, nil
+}
+
+// foreignBlockerNote returns " (<blocker> is in project <name>)" when the
+// blocker lives in a different project than the issue, else "". It is
+// best-effort display only: any lookup failure (or an older server that omits
+// project info) yields "".
+func (d *Deps) foreignBlockerNote(issueUUID, depUUID string) string {
+	projectOf := func(uuid string) (id, name string) {
+		b, err := api.JSON[api.Bead](d.Client.Get("/beads/" + uuid))
+		if err != nil {
+			return "", ""
+		}
+		id, name = b.ProjectID, b.ProjectName
+		if b.Project != nil {
+			id, name = b.Project.ID, b.Project.Name
+		}
+		return id, name
+	}
+	issueProject, _ := projectOf(issueUUID)
+	blockerProject, blockerName := projectOf(depUUID)
+	if issueProject == "" || blockerProject == "" || issueProject == blockerProject {
+		return ""
+	}
+	if blockerName == "" {
+		blockerName = shortID(blockerProject)
+	}
+	return fmt.Sprintf(" (blocker is in project %s)", blockerName)
 }

@@ -97,11 +97,17 @@ func newScopeEnv(t *testing.T, projectID string, old bool) (*scopeServer, func(a
 	}))
 	t.Cleanup(srv.Close)
 
+	return ss, envAgainst(t, srv.URL, projectID)
+}
+
+// envAgainst runs commands against the API at url with the given project.
+func envAgainst(t *testing.T, url, projectID string) func(args ...string) (string, error) {
+	t.Helper()
 	deps := &Deps{
-		Cfg:    &config.Config{ProjectID: projectID, APIURL: srv.URL, Token: "t", ConfigDir: t.TempDir()},
-		Client: apiPkg.New(srv.URL, "t", Version),
+		Cfg:    &config.Config{ProjectID: projectID, APIURL: url, Token: "t", ConfigDir: t.TempDir()},
+		Client: apiPkg.New(url, "t", Version),
 	}
-	return ss, func(args ...string) (string, error) {
+	return func(args ...string) (string, error) {
 		root := NewRootCmd(deps)
 		root.SetArgs(args)
 		oldOut, oldErr := os.Stdout, os.Stderr

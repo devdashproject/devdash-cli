@@ -111,9 +111,48 @@ func prettyBead(data []byte) (string, error) {
 			fmt.Fprintf(&sb, "%-12s %s\n", label+":", value)
 		}
 	}
-	field("Parent", shortID(str(b, "parentBeadId")))
-	field("Blocked by", idList(b["blockedBy"]))
-	field("Blocks", idList(b["blocks"]))
+	ownProject := nested(b, "project")
+	switch name, id := str(ownProject, "name"), firstNonEmptyStr(str(ownProject, "id"), str(b, "projectId")); {
+	case name != "" && id != "":
+		field("Project", fmt.Sprintf("%s (%s)", name, shortID(id)))
+	case name != "" || id != "":
+		field("Project", firstNonEmptyStr(name, shortID(id)))
+	}
+	ownProjectID := firstNonEmptyStr(str(ownProject, "id"), str(b, "projectId"))
+
+	// Related issues are always shown, with an explicit "none" when empty.
+	if parent := nested(b, "parent"); parent != nil {
+		field("Parent", depLine(parent, ownProjectID))
+	} else if p := str(b, "parentBeadId"); p != "" {
+		field("Parent", shortID(p))
+	} else {
+		field("Parent", "none")
+	}
+	related := func(label string, details interface{}, ids interface{}) {
+		items, _ := details.([]interface{})
+		if len(items) == 0 {
+			// Older servers send only IDs.
+			if list := idList(ids); list != "" {
+				field(label, list)
+			} else {
+				field(label, "none")
+			}
+			return
+		}
+		fmt.Fprintf(&sb, "%s:\n", label)
+		for _, it := range items {
+			if m, ok := it.(map[string]interface{}); ok {
+				fmt.Fprintf(&sb, "  %s\n", depLine(m, ownProjectID))
+			}
+		}
+	}
+	// Children are listed here only when the server sent them; otherwise
+	// show falls back to the project list (see prettyChildren).
+	if _, ok := b["children"]; ok {
+		related("Children", b["children"], nil)
+	}
+	related("Blocked by", b["blockedByDetails"], b["blockedBy"])
+	related("Blocks", b["blocksDetails"], b["blocks"])
 	assignee := str(b, "assigneeName")
 	if assignee == "" {
 		assignee = str(b, "owner")
@@ -129,6 +168,9 @@ func prettyBead(data []byte) (string, error) {
 			fmt.Fprintf(&sb, "\n%s:\n  %s\n", title, strings.ReplaceAll(strings.TrimSpace(text), "\n", "\n  "))
 		}
 	}
+	if strings.TrimSpace(str(b, "description")) == "" {
+		fmt.Fprintf(&sb, "\nDescription: none\n")
+	}
 	block("Description", str(b, "description"))
 	block("Pre-instructions", str(b, "preInstructions"))
 
@@ -143,6 +185,23 @@ func prettyBead(data []byte) (string, error) {
 		}
 	}
 	return sb.String(), nil
+}
+
+// depLine renders a related issue: short ID, status, subject, and the project
+// name when it differs from the issue's own. A redacted issue (one in a project
+// the caller cannot access) shows as "(no access)".
+func depLine(m map[string]interface{}, ownProjectID string) string {
+	id := shortID(str(m, "id"))
+	if inaccessible, _ := m["inaccessible"].(bool); inaccessible {
+		return id + " (no access)"
+	}
+	line := fmt.Sprintf("%s [%s] %s", id, str(m, "status"), str(m, "subject"))
+	if name := str(m, "projectName"); name != "" {
+		if pid := str(m, "projectId"); pid == "" || ownProjectID == "" || pid != ownProjectID {
+			line += " (project: " + name + ")"
+		}
+	}
+	return line
 }
 
 // prettyComments renders one line per comment (author names only, no emails).

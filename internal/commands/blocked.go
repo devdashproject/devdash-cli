@@ -39,6 +39,14 @@ completed before these issues can move forward.`,
 				}
 			}
 
+			// Blockers in other projects are not in this list: look them up so
+			// their project name shows and completed ones stop blocking.
+			foreign := lookupForeignBlockers(d, beads, func(b api.Bead) bool {
+				return b.Status == "blocked" || b.Status == "pending"
+			})
+			markForeignCompleted(completedIDs, foreign)
+			labels := foreignLabels(foreign)
+
 			var blocked []api.Bead
 			for _, b := range beads {
 				if isEffectivelyBlocked(b, completedIDs) {
@@ -56,7 +64,7 @@ completed before these issues can move forward.`,
 			}
 
 			for _, b := range blocked {
-				fmt.Println(output.FormatBlockedLine(b))
+				fmt.Println(output.FormatBlockedLineWithLabels(b, labels))
 			}
 			return nil
 		},

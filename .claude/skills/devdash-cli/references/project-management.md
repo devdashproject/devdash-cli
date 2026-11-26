@@ -94,13 +94,13 @@ If you cd into the `dd-landing-page` repo first, the `--from` becomes unnecessar
 
 ## Cross-project dependencies
 
-Within a single project, `devdash dep add` works as documented in `commands.md`. Cross-project dependencies (issue in project A blocked by issue in project B) are not supported by `dep add` — the dependency model assumes a single project. If the user wants something close to it, the common pattern is:
+`devdash dep add <issue> <blocker>` works across projects: pass the blocker's **full UUID** (find it with `devdash find <uuid>` or from the other project). You need access to both projects, no project has to be configured when both IDs are full UUIDs, and a dependency cycle that spans projects is rejected by the server.
 
-- Create the issue in the project that owns the work.
-- Add a `devdash comment` on the depending issue with the blocker's full UUID and a note.
-- Optionally, the depending issue stays `pending` until you manually close the comment thread; it doesn't appear in `ready` until the blocker is resolved by convention rather than enforcement.
+```bash
+devdash dep add 25c08147-... 9cb5aa55-...   # full UUIDs; blocker may be in another project
+```
 
-For richer cross-project tracking, see `devdash help projects` for any project-specific conventions in this repo.
+`devdash dep add` names the blocker's project when it differs, `devdash show <id> --pretty` lists blockers with `(project: <name>)` (or `(no access)` when you cannot see that project), and `devdash blocked` / `devdash ready` label foreign blockers with their project. If a server predates cross-project support, `dep add` may fail; see `devdash help projects`.
 
 ## Targeting a single command at another project
 
